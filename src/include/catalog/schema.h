@@ -90,7 +90,7 @@ class Schema {
    * @param columns description of this SQL table's schema as a collection of Columns
    * @param version the schema version number
    */
-  explicit Schema(std::vector<Column> columns, layout_version_t version = layout_version_t(0))
+  explicit Schema(std::vector<Column> columns, uint32_t version = 0)
       : columns_(std::move(columns)) {
     TERRIER_ASSERT(!columns_.empty() && columns_.size() <= common::Constants::MAX_COL,
                    "Number of columns must be between 1 and 32767.");
@@ -114,7 +114,7 @@ class Schema {
   const layout_version_t GetVersion() { return version_; }
 
  private:
-  const layout_version_t version_;
+  const uint32_t version_;
   const std::vector<Column> columns_;
 };
 }  // namespace terrier::catalog

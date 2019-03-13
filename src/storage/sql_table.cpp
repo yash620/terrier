@@ -9,7 +9,7 @@ SqlTable::SqlTable(BlockStore *const store, const catalog::Schema &schema, const
     : block_store_(store), oid_(oid) {
   TERRIER_ASSERT(tables_.find(schema.GetVersion()) == tables_.end(), "schema versions for an SQL table must be unique");
   const auto layout_and_map = StorageUtil::BlockLayoutFromSchema(schema);
-  tables_[schema.GetVersion()] = {new DataTable(block_store_, layout_and_map.first, schema.GetVersion()),
+  tables_[schema.GetVersion()] = {new DataTable(block_store_, layout_and_map.first, layout_version_t(schema.GetVersion())),
                                   layout_and_map.first, layout_and_map.second};
 }
 

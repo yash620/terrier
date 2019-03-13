@@ -182,7 +182,7 @@ class SqlTable {
   const catalog::table_oid_t oid_;
 
   // Eventually we'll support adding more tables when schema changes. For now we'll always access the one DataTable.
-  std::map<layout_version_t, DataTableVersion> tables_;
+  std::map<uint32_t, DataTableVersion> tables_;
 
   /**
    * Given a set of col_oids, return a vector of corresponding col_ids to use for ProjectionInitialization
