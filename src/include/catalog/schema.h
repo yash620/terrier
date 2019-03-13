@@ -91,10 +91,9 @@ class Schema {
    * @param version the schema version number
    */
   explicit Schema(std::vector<Column> columns, uint32_t version = 0)
-      : columns_(std::move(columns)) {
+      : version_(version), columns_(std::move(columns))  {
     TERRIER_ASSERT(!columns_.empty() && columns_.size() <= common::Constants::MAX_COL,
                    "Number of columns must be between 1 and 32767.");
-    version_ = version;
   }
   /**
    * @param col_id offset into the schema specifying which Column to access
@@ -111,7 +110,7 @@ class Schema {
   /**
    * @return version number for this schema
    */
-  const layout_version_t GetVersion() { return version_; }
+  const uint32_t GetVersion() const { return version_; }
 
  private:
   const uint32_t version_;
