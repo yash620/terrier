@@ -5,6 +5,16 @@
 
 namespace terrier::storage {
 
+
+
+  SqlTable::~SqlTable () {
+    while (tables_.cbegin() != tables_.cend()) {
+      auto pair = *(tables_.cbegin());
+      delete (pair.second.data_table); // Delete the data_table object on the heap
+      tables_.erase(pair.first);
+    }
+  }
+
 std::vector<col_id_t> SqlTable::ColIdsForOids(const std::vector<catalog::col_oid_t> &col_oids) const {
   TERRIER_ASSERT(!col_oids.empty(), "Should be used to access at least one column.");
   std::vector<col_id_t> col_ids;

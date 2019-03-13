@@ -1,5 +1,6 @@
 #pragma once
 #include <list>
+#include <map>
 #include <set>
 #include <utility>
 #include <vector>
@@ -39,17 +40,12 @@ class SqlTable {
    * @param schema the initial Schema of this SqlTable
    * @param oid unique identifier for this SqlTable
    */
-  SqlTable(BlockStore *const store, const catalog::Schema &schema, const catalog::table_oid_t oid)
-      : block_store_(store), oid_(oid) {
-    const auto layout_and_map = StorageUtil::BlockLayoutFromSchema(schema);
-    table_ = {new DataTable(block_store_, layout_and_map.first, layout_version_t(0)), layout_and_map.first,
-              layout_and_map.second};
-  }
+  SqlTable(BlockStore *const store, const catalog::Schema &schema, const catalog::table_oid_t oid);
 
   /**
    * Destructs a SqlTable, frees all its members.
    */
-  ~SqlTable() { delete table_.data_table; }
+  ~SqlTable();
 
   /**
    * Materializes a single tuple from the given slot, as visible at the timestamp of the calling txn.
@@ -186,7 +182,7 @@ class SqlTable {
   const catalog::table_oid_t oid_;
 
   // Eventually we'll support adding more tables when schema changes. For now we'll always access the one DataTable.
-  DataTableVersion table_;
+  std::map<layout_version_t, DataTableVersion> tables_;
 
   /**
    * Given a set of col_oids, return a vector of corresponding col_ids to use for ProjectionInitialization

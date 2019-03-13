@@ -88,10 +88,12 @@ class Schema {
   /**
    * Instantiates a Schema object from a vector of previously-defined Columns
    * @param columns description of this SQL table's schema as a collection of Columns
+   * @param version the schema version number
    */
-  explicit Schema(std::vector<Column> columns) : columns_(std::move(columns)) {
+  explicit Schema(std::vector<Column> columns, layout_version_t version = layout_version_t(0)) : columns_(std::move(columns)) {
     TERRIER_ASSERT(!columns_.empty() && columns_.size() <= common::Constants::MAX_COL,
                    "Number of columns must be between 1 and 32767.");
+    version_ = version;
   }
   /**
    * @param col_id offset into the schema specifying which Column to access
@@ -105,8 +107,13 @@ class Schema {
    * @return description of this SQL table's schema as a collection of Columns
    */
   const std::vector<Column> &GetColumns() const { return columns_; }
+  /**
+   * @return version number for this schema
+   */
+  const layout_version_t GetVersion() { return version_; }
 
  private:
+  const layout_version_t version_;
   const std::vector<Column> columns_;
 };
 }  // namespace terrier::catalog
