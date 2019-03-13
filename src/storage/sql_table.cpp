@@ -7,17 +7,16 @@ namespace terrier::storage {
 
 SqlTable::SqlTable(BlockStore *const store, const catalog::Schema &schema, const catalog::table_oid_t oid)
     : block_store_(store), oid_(oid) {
-  TERRIER_ASSERT(tables_.find(schema.GetVersion()) == tables_.end(),
-    "schema versions for an SQL table must be unique");
+  TERRIER_ASSERT(tables_.find(schema.GetVersion()) == tables_.end(), "schema versions for an SQL table must be unique");
   const auto layout_and_map = StorageUtil::BlockLayoutFromSchema(schema);
-  tables_[schema.GetVersion()] = {new DataTable(block_store_, layout_and_map.first, schema.GetVersion()), layout_and_map.first,
-            layout_and_map.second};
+  tables_[schema.GetVersion()] = {new DataTable(block_store_, layout_and_map.first, schema.GetVersion()),
+                                  layout_and_map.first, layout_and_map.second};
 }
 
-SqlTable::~SqlTable () {
+SqlTable::~SqlTable() {
   while (tables_.cbegin() != tables_.cend()) {
     auto pair = *(tables_.cbegin());
-    delete (pair.second.data_table); // Delete the data_table object on the heap
+    delete (pair.second.data_table);  // Delete the data_table object on the heap
     tables_.erase(pair.first);
   }
 }
