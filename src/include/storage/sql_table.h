@@ -55,8 +55,8 @@ class SqlTable {
    * @param out_buffer output buffer. The object should already contain projection list information. @see ProjectedRow.
    * @return true if tuple is visible to this txn and ProjectedRow has been populated, false otherwise
    */
-  bool Select(transaction::TransactionContext *const txn, const TupleSlot slot, ProjectedRow *const out_buffer) const {
-    return table_.data_table->Select(txn, slot, out_buffer);
+  bool Select(transaction::TransactionContext *const txn, const TupleSlot slot, ProjectedRow *const out_buffer, uint32_t schema_version = 0) const {
+    return tables_[version].data_table->Select(txn, slot, out_buffer);
   }
 
   /**
@@ -67,10 +67,10 @@ class SqlTable {
    * @param redo the desired change to be applied. This should be the after-image of the attributes of interest.
    * @return true if successful, false otherwise
    */
-  bool Update(transaction::TransactionContext *const txn, const TupleSlot slot, const ProjectedRow &redo) const {
+  bool Update(transaction::TransactionContext *const txn, const TupleSlot slot, const ProjectedRow &redo, uint32_t schema_version = 0) const {
     // TODO(Matt): check constraints? Discuss if that happens in execution layer or not
     // TODO(Matt): update indexes
-    return table_.data_table->Update(txn, slot, redo);
+    return tables_[version].data_table->Update(txn, slot, redo);
   }
 
   /**
@@ -81,10 +81,10 @@ class SqlTable {
    * @return the TupleSlot allocated for this insert, used to identify this tuple's physical location for indexes and
    * such.
    */
-  TupleSlot Insert(transaction::TransactionContext *const txn, const ProjectedRow &redo) const {
+  TupleSlot Insert(transaction::TransactionContext *const txn, const ProjectedRow &redo, uint32_t schema_version = 0) const {
     // TODO(Matt): check constraints? Discuss if that happens in execution layer or not
     // TODO(Matt): update indexes
-    return table_.data_table->Insert(txn, redo);
+    return tables_[version].data_table->Insert(txn, redo);
   }
 
   /**
@@ -93,10 +93,10 @@ class SqlTable {
    * @param slot the slot of the tuple to delete
    * @return true if successful, false otherwise
    */
-  bool Delete(transaction::TransactionContext *const txn, const TupleSlot slot) {
+  bool Delete(transaction::TransactionContext *const txn, const TupleSlot slot, uint32_t schema_version = 0) {
     // TODO(Matt): check constraints? Discuss if that happens in execution layer or not
     // TODO(Matt): update indexes
-    return table_.data_table->Delete(txn, slot);
+    return tables_[version].data_table->Delete(txn, slot);
   }
 
   /**
@@ -112,8 +112,8 @@ class SqlTable {
    *                   always cleared of old values.
    */
   void Scan(transaction::TransactionContext *const txn, DataTable::SlotIterator *const start_pos,
-            ProjectedColumns *const out_buffer) const {
-    return table_.data_table->Scan(txn, start_pos, out_buffer);
+            ProjectedColumns *const out_buffer, uint32_t schema_version = 0) const {
+    return tables_[version].data_table->Scan(txn, start_pos, out_buffer);
   }
 
   /**
@@ -124,12 +124,12 @@ class SqlTable {
   /**
    * @return the first tuple slot contained in the underlying DataTable
    */
-  DataTable::SlotIterator begin() const { return table_.data_table->begin(); }
+  DataTable::SlotIterator begin(uint32_t schema_version = 0) const { return tables_[version].data_table->begin(); }
 
   /**
    * @return one past the last tuple slot contained in the underlying DataTable
    */
-  DataTable::SlotIterator end() const { return table_.data_table->end(); }
+  DataTable::SlotIterator end(uint32_t schema_version = 0) const { return tables_[version].data_table->end(); }
 
   /**
    * Generates an ProjectedColumnsInitializer for the execution layer to use. This performs the translation from col_oid
@@ -141,13 +141,13 @@ class SqlTable {
    * @warning col_oids must be a set (no repeats)
    */
   std::pair<ProjectedColumnsInitializer, ProjectionMap> InitializerForProjectedColumns(
-      const std::vector<catalog::col_oid_t> &col_oids, const uint32_t max_tuples) const {
+      const std::vector<catalog::col_oid_t> &col_oids, const uint32_t max_tuples, uint32_t schema_version = 0) const {
     TERRIER_ASSERT((std::set<catalog::col_oid_t>(col_oids.cbegin(), col_oids.cend())).size() == col_oids.size(),
                    "There should not be any duplicated in the col_ids!");
     auto col_ids = ColIdsForOids(col_oids);
     TERRIER_ASSERT(col_ids.size() == col_oids.size(),
                    "Projection should be the same number of columns as requested col_oids.");
-    ProjectedColumnsInitializer initializer(table_.layout, col_ids, max_tuples);
+    ProjectedColumnsInitializer initializer(tables_[version].layout, col_ids, max_tuples);
     auto projection_map = ProjectionMapForInitializer<ProjectedColumnsInitializer>(initializer);
     TERRIER_ASSERT(projection_map.size() == col_oids.size(),
                    "ProjectionMap be the same number of columns as requested col_oids.");
@@ -164,13 +164,13 @@ class SqlTable {
    * @warning col_oids must be a set (no repeats)
    */
   std::pair<ProjectedRowInitializer, ProjectionMap> InitializerForProjectedRow(
-      const std::vector<catalog::col_oid_t> &col_oids) const {
+      const std::vector<catalog::col_oid_t> &col_oids, uint32_t schema_version = 0) const {
     TERRIER_ASSERT((std::set<catalog::col_oid_t>(col_oids.cbegin(), col_oids.cend())).size() == col_oids.size(),
                    "There should not be any duplicated in the col_ids!");
     auto col_ids = ColIdsForOids(col_oids);
     TERRIER_ASSERT(col_ids.size() == col_oids.size(),
                    "Projection should be the same number of columns as requested col_oids.");
-    ProjectedRowInitializer initializer(table_.layout, col_ids);
+    ProjectedRowInitializer initializer(tables_[version].layout, col_ids);
     auto projection_map = ProjectionMapForInitializer<ProjectedRowInitializer>(initializer);
     TERRIER_ASSERT(projection_map.size() == col_oids.size(),
                    "ProjectionMap be the same number of columns as requested col_oids.");
