@@ -56,7 +56,7 @@ class SqlTable {
    * @return true if tuple is visible to this txn and ProjectedRow has been populated, false otherwise
    */
   bool Select(transaction::TransactionContext *const txn, const TupleSlot slot, ProjectedRow *const out_buffer, uint32_t schema_version = 0) const {
-    return (tables_[schema_version].data_table)->Select(txn, slot, out_buffer);
+    return tables_.at(schema_version).data_table->Select(txn, slot, out_buffer);
   }
 
   /**
@@ -70,7 +70,7 @@ class SqlTable {
   bool Update(transaction::TransactionContext *const txn, const TupleSlot slot, const ProjectedRow &redo, uint32_t schema_version = 0) const {
     // TODO(Matt): check constraints? Discuss if that happens in execution layer or not
     // TODO(Matt): update indexes
-    return (tables_[schema_version].data_table)->Update(txn, slot, redo);
+    return tables_.at(schema_version).data_table->Update(txn, slot, redo);
   }
 
   /**
@@ -84,7 +84,7 @@ class SqlTable {
   TupleSlot Insert(transaction::TransactionContext *const txn, const ProjectedRow &redo, uint32_t schema_version = 0) const {
     // TODO(Matt): check constraints? Discuss if that happens in execution layer or not
     // TODO(Matt): update indexes
-    return (tables_[schema_version].data_table)->Insert(txn, redo);
+    return tables_.at(schema_version).data_table->Insert(txn, redo);
   }
 
   /**
@@ -96,7 +96,7 @@ class SqlTable {
   bool Delete(transaction::TransactionContext *const txn, const TupleSlot slot, uint32_t schema_version = 0) {
     // TODO(Matt): check constraints? Discuss if that happens in execution layer or not
     // TODO(Matt): update indexes
-    return (tables_[schema_version].data_table)->Delete(txn, slot);
+    return tables_.at(schema_version).data_table->Delete(txn, slot);
   }
 
   /**
@@ -113,7 +113,7 @@ class SqlTable {
    */
   void Scan(transaction::TransactionContext *const txn, DataTable::SlotIterator *const start_pos,
             ProjectedColumns *const out_buffer, uint32_t schema_version = 0) const {
-    return (tables_[schema_version].data_table)->Scan(txn, start_pos, out_buffer);
+    return tables_.at(schema_version).data_table->Scan(txn, start_pos, out_buffer);
   }
 
   /**
@@ -124,12 +124,12 @@ class SqlTable {
   /**
    * @return the first tuple slot contained in the underlying DataTable
    */
-  DataTable::SlotIterator begin(uint32_t schema_version = 0) const { return (tables_[schema_version].data_table)->begin(); }
+  DataTable::SlotIterator begin(uint32_t schema_version = 0) const { return tables_.at(schema_version).data_table->begin(); }
 
   /**
    * @return one past the last tuple slot contained in the underlying DataTable
    */
-  DataTable::SlotIterator end(uint32_t schema_version = 0) const { return (tables_[schema_version].data_table)->end(); }
+  DataTable::SlotIterator end(uint32_t schema_version = 0) const { return tables_.at(schema_version).data_table->end(); }
 
   /**
    * Generates an ProjectedColumnsInitializer for the execution layer to use. This performs the translation from col_oid
@@ -147,7 +147,7 @@ class SqlTable {
     auto col_ids = ColIdsForOids(col_oids);
     TERRIER_ASSERT(col_ids.size() == col_oids.size(),
                    "Projection should be the same number of columns as requested col_oids.");
-    ProjectedColumnsInitializer initializer(tables_[schema_version].layout, col_ids, max_tuples);
+    ProjectedColumnsInitializer initializer(tables_.at(schema_version).layout, col_ids, max_tuples);
     auto projection_map = ProjectionMapForInitializer<ProjectedColumnsInitializer>(initializer);
     TERRIER_ASSERT(projection_map.size() == col_oids.size(),
                    "ProjectionMap be the same number of columns as requested col_oids.");
@@ -170,7 +170,7 @@ class SqlTable {
     auto col_ids = ColIdsForOids(col_oids);
     TERRIER_ASSERT(col_ids.size() == col_oids.size(),
                    "Projection should be the same number of columns as requested col_oids.");
-    ProjectedRowInitializer initializer(tables_[schema_version].layout, col_ids);
+    ProjectedRowInitializer initializer(tables_.at(schema_version).layout, col_ids);
     auto projection_map = ProjectionMapForInitializer<ProjectedRowInitializer>(initializer);
     TERRIER_ASSERT(projection_map.size() == col_oids.size(),
                    "ProjectionMap be the same number of columns as requested col_oids.");
