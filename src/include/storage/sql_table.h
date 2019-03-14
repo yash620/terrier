@@ -148,7 +148,7 @@ class SqlTable {
     TERRIER_ASSERT(col_ids.size() == col_oids.size(),
                    "Projection should be the same number of columns as requested col_oids.");
     ProjectedColumnsInitializer initializer(tables_.at(schema_version).layout, col_ids, max_tuples);
-    auto projection_map = ProjectionMapForInitializer<ProjectedColumnsInitializer>(initializer);
+    auto projection_map = ProjectionMapForInitializer<ProjectedColumnsInitializer>(initializer, schema_version);
     TERRIER_ASSERT(projection_map.size() == col_oids.size(),
                    "ProjectionMap be the same number of columns as requested col_oids.");
     return {initializer, projection_map};
@@ -171,7 +171,7 @@ class SqlTable {
     TERRIER_ASSERT(col_ids.size() == col_oids.size(),
                    "Projection should be the same number of columns as requested col_oids.");
     ProjectedRowInitializer initializer(tables_.at(schema_version).layout, col_ids);
-    auto projection_map = ProjectionMapForInitializer<ProjectedRowInitializer>(initializer);
+    auto projection_map = ProjectionMapForInitializer<ProjectedRowInitializer>(initializer, schema_version);
     TERRIER_ASSERT(projection_map.size() == col_oids.size(),
                    "ProjectionMap be the same number of columns as requested col_oids.");
     return {initializer, projection_map};
