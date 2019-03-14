@@ -55,7 +55,8 @@ class SqlTable {
    * @param out_buffer output buffer. The object should already contain projection list information. @see ProjectedRow.
    * @return true if tuple is visible to this txn and ProjectedRow has been populated, false otherwise
    */
-  bool Select(transaction::TransactionContext *const txn, const TupleSlot slot, ProjectedRow *const out_buffer, uint32_t schema_version = 0) const {
+  bool Select(transaction::TransactionContext *const txn, const TupleSlot slot, ProjectedRow *const out_buffer,
+              uint32_t schema_version = 0) const {
     return tables_.at(schema_version).data_table->Select(txn, slot, out_buffer);
   }
 
@@ -67,7 +68,8 @@ class SqlTable {
    * @param redo the desired change to be applied. This should be the after-image of the attributes of interest.
    * @return true if successful, false otherwise
    */
-  bool Update(transaction::TransactionContext *const txn, const TupleSlot slot, const ProjectedRow &redo, uint32_t schema_version = 0) const {
+  bool Update(transaction::TransactionContext *const txn, const TupleSlot slot, const ProjectedRow &redo,
+              uint32_t schema_version = 0) const {
     // TODO(Matt): check constraints? Discuss if that happens in execution layer or not
     // TODO(Matt): update indexes
     return tables_.at(schema_version).data_table->Update(txn, slot, redo);
@@ -81,7 +83,8 @@ class SqlTable {
    * @return the TupleSlot allocated for this insert, used to identify this tuple's physical location for indexes and
    * such.
    */
-  TupleSlot Insert(transaction::TransactionContext *const txn, const ProjectedRow &redo, uint32_t schema_version = 0) const {
+  TupleSlot Insert(transaction::TransactionContext *const txn, const ProjectedRow &redo,
+                   uint32_t schema_version = 0) const {
     // TODO(Matt): check constraints? Discuss if that happens in execution layer or not
     // TODO(Matt): update indexes
     return tables_.at(schema_version).data_table->Insert(txn, redo);
@@ -124,12 +127,16 @@ class SqlTable {
   /**
    * @return the first tuple slot contained in the underlying DataTable
    */
-  DataTable::SlotIterator begin(uint32_t schema_version = 0) const { return tables_.at(schema_version).data_table->begin(); }
+  DataTable::SlotIterator begin(uint32_t schema_version = 0) const {
+    return tables_.at(schema_version).data_table->begin();
+  }
 
   /**
    * @return one past the last tuple slot contained in the underlying DataTable
    */
-  DataTable::SlotIterator end(uint32_t schema_version = 0) const { return tables_.at(schema_version).data_table->end(); }
+  DataTable::SlotIterator end(uint32_t schema_version = 0) const {
+    return tables_.at(schema_version).data_table->end();
+  }
 
   /**
    * Generates an ProjectedColumnsInitializer for the execution layer to use. This performs the translation from col_oid
@@ -189,7 +196,8 @@ class SqlTable {
    * @param col_oids set of col_oids, they must be in the table's ColumnMap
    * @return vector of col_ids for these col_oids
    */
-  std::vector<col_id_t> ColIdsForOids(const std::vector<catalog::col_oid_t> &col_oids, uint32_t schema_version = 0) const;
+  std::vector<col_id_t> ColIdsForOids(const std::vector<catalog::col_oid_t> &col_oids,
+                                      uint32_t schema_version = 0) const;
 
   /**
    * Given a ProjectionInitializer, returns a map between col_oid and the offset within the projection to access that
@@ -199,6 +207,7 @@ class SqlTable {
    * @return the projection map for this initializer
    */
   template <class ProjectionInitializerType>
-  ProjectionMap ProjectionMapForInitializer(const ProjectionInitializerType &initializer, uint32_t schema_version) const;
+  ProjectionMap ProjectionMapForInitializer(const ProjectionInitializerType &initializer,
+                                            uint32_t schema_version) const;
 };
 }  // namespace terrier::storage

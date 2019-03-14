@@ -9,8 +9,9 @@ SqlTable::SqlTable(BlockStore *const store, const catalog::Schema &schema, const
     : block_store_(store), oid_(oid) {
   TERRIER_ASSERT(tables_.find(schema.GetVersion()) == tables_.end(), "schema versions for an SQL table must be unique");
   const auto layout_and_map = StorageUtil::BlockLayoutFromSchema(schema);
-  tables_[schema.GetVersion()] = {new DataTable(block_store_, layout_and_map.first, layout_version_t(schema.GetVersion())),
-                                  layout_and_map.first, layout_and_map.second};
+  tables_[schema.GetVersion()] = {
+      new DataTable(block_store_, layout_and_map.first, layout_version_t(schema.GetVersion())), layout_and_map.first,
+      layout_and_map.second};
 }
 
 SqlTable::~SqlTable() {
@@ -21,13 +22,15 @@ SqlTable::~SqlTable() {
   }
 }
 
-std::vector<col_id_t> SqlTable::ColIdsForOids(const std::vector<catalog::col_oid_t> &col_oids, uint32_t schema_version) const {
+std::vector<col_id_t> SqlTable::ColIdsForOids(const std::vector<catalog::col_oid_t> &col_oids,
+                                              uint32_t schema_version) const {
   TERRIER_ASSERT(!col_oids.empty(), "Should be used to access at least one column.");
   std::vector<col_id_t> col_ids;
 
   // Build the input to the initializer constructor
   for (const catalog::col_oid_t col_oid : col_oids) {
-    TERRIER_ASSERT(tables_.at(schema_version).column_map.count(col_oid) > 0, "Provided col_oid does not exist in the table.");
+    TERRIER_ASSERT(tables_.at(schema_version).column_map.count(col_oid) > 0,
+                   "Provided col_oid does not exist in the table.");
     const col_id_t col_id = tables_.at(schema_version).column_map.at(col_oid);
     col_ids.push_back(col_id);
   }
@@ -36,7 +39,8 @@ std::vector<col_id_t> SqlTable::ColIdsForOids(const std::vector<catalog::col_oid
 }
 
 template <class ProjectionInitializerType>
-ProjectionMap SqlTable::ProjectionMapForInitializer(const ProjectionInitializerType &initializer, uint32_t schema_version) const {
+ProjectionMap SqlTable::ProjectionMapForInitializer(const ProjectionInitializerType &initializer,
+                                                    uint32_t schema_version) const {
   ProjectionMap projection_map;
   // for every attribute in the initializer
   for (uint16_t i = 0; i < initializer.NumColumns(); i++) {

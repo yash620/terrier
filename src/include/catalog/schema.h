@@ -90,8 +90,7 @@ class Schema {
    * @param columns description of this SQL table's schema as a collection of Columns
    * @param version the schema version number
    */
-  explicit Schema(std::vector<Column> columns, uint32_t version = 0)
-      : version_(version), columns_(std::move(columns))  {
+  explicit Schema(std::vector<Column> columns, uint32_t version = 0) : version_(version), columns_(std::move(columns)) {
     TERRIER_ASSERT(!columns_.empty() && columns_.size() <= common::Constants::MAX_COL,
                    "Number of columns must be between 1 and 32767.");
   }
