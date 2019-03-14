@@ -189,7 +189,7 @@ class SqlTable {
    * @param col_oids set of col_oids, they must be in the table's ColumnMap
    * @return vector of col_ids for these col_oids
    */
-  std::vector<col_id_t> ColIdsForOids(const std::vector<catalog::col_oid_t> &col_oids) const;
+  std::vector<col_id_t> ColIdsForOids(const std::vector<catalog::col_oid_t> &col_oids, uint32_t schema_version = 0) const;
 
   /**
    * Given a ProjectionInitializer, returns a map between col_oid and the offset within the projection to access that
@@ -199,6 +199,6 @@ class SqlTable {
    * @return the projection map for this initializer
    */
   template <class ProjectionInitializerType>
-  ProjectionMap ProjectionMapForInitializer(const ProjectionInitializerType &initializer) const;
+  ProjectionMap ProjectionMapForInitializer(const ProjectionInitializerType &initializer, uint32_t schema_version = 0) const;
 };
 }  // namespace terrier::storage
