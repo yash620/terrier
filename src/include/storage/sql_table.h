@@ -199,6 +199,6 @@ class SqlTable {
    * @return the projection map for this initializer
    */
   template <class ProjectionInitializerType>
-  ProjectionMap ProjectionMapForInitializer(const ProjectionInitializerType &initializer, uint32_t schema_version = 0) const;
+  ProjectionMap ProjectionMapForInitializer(const ProjectionInitializerType &initializer, uint32_t schema_version) const;
 };
 }  // namespace terrier::storage

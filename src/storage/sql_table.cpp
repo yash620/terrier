@@ -54,8 +54,8 @@ ProjectionMap SqlTable::ProjectionMapForInitializer(const ProjectionInitializerT
 }
 
 template ProjectionMap SqlTable::ProjectionMapForInitializer<ProjectedColumnsInitializer>(
-    const ProjectedColumnsInitializer &initializer) const;
+    const ProjectedColumnsInitializer &initializer, uint32_t schema_version = 0) const;
 template ProjectionMap SqlTable::ProjectionMapForInitializer<ProjectedRowInitializer>(
-    const ProjectedRowInitializer &initializer) const;
+    const ProjectedRowInitializer &initializer, uint32_t schema_version = 0) const;
 
 }  // namespace terrier::storage
