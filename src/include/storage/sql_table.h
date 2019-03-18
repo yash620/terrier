@@ -29,6 +29,8 @@ class SqlTable {
     DataTable *data_table;
     BlockLayout layout;
     ColumnMap column_map;
+    //TODO(John): Add 'inverse_column_map' and populate during create
+    //TODO(John): Add 'default_value_map' (dynamic) for col_oid->default_val
   };
 
  public:
@@ -46,6 +48,13 @@ class SqlTable {
    * Destructs a SqlTable, frees all its members.
    */
   ~SqlTable();
+
+  /**
+   * Adds the new schema to set of active data tables.
+   *
+   * @param schema the new Schema for the SqlTable (version must be unique)
+   */
+  void UpdateSchema(const catalog::Schema &schema);
 
   /**
    * Materializes a single tuple from the given slot, as visible at the timestamp of the calling txn.

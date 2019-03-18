@@ -22,6 +22,13 @@ SqlTable::~SqlTable() {
   }
 }
 
+void UpdateSchema(const catalog::Schema &schema) {
+  // Compare new schema attributes to current schema and "note" changes
+  // If add column w/ default value, insert default value into previous versions
+  // If change default value, previous versions not affected.
+  return;
+}
+
 std::vector<col_id_t> SqlTable::ColIdsForOids(const std::vector<catalog::col_oid_t> &col_oids,
                                               uint32_t schema_version) const {
   TERRIER_ASSERT(!col_oids.empty(), "Should be used to access at least one column.");
