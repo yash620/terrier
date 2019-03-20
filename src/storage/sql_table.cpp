@@ -35,7 +35,7 @@ bool SqlTable::Select(transaction::TransactionContext *const txn, const TupleSlo
 
   // The version of the current slot is the same as the version num
   if (old_version_num == version_num) {
-    return tables_.at(version).data_table->Select(txn, slot, out_buffer);
+    return tables_.at(version_num).data_table->Select(txn, slot, out_buffer);
   }
 
   // The slot version is not the same as the version_num

@@ -205,8 +205,8 @@ class SqlTable {
    * @return the first tuple slot contained in the data table
    */
   SlotIterator begin() const {
-    common::SpinLatch::ScopedSpinLatch guard(&tables_latch_);
-    return {tables_.begin(), tables_.begin()->data_table->begin()};
+    // common::SpinLatch::ScopedSpinLatch guard(&tables_latch_);
+    return {tables_.begin(), tables_.begin().second->data_table->begin()};
   }
 
   /**
@@ -218,8 +218,8 @@ class SqlTable {
    * @return one past the last tuple slot contained in the data table.
    */
   SlotIterator end() const {
-    common::SpinLatch::ScopedSpinLatch guard(&tables_latch_);
-    return {--tables_.end(), tables_[tables_.size() - 1].data_table->end()};
+    // common::SpinLatch::ScopedSpinLatch guard(&tables_latch_);
+    return {--tables_.end(), (--tables_.end()).second->data_table->end()};
   }
 
   /**
