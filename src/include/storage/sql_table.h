@@ -93,10 +93,10 @@ class SqlTable {
     /**
      * @warning MUST BE CALLED ONLY WHEN CALLER HOLDS LOCK TO THE LIST OF RAW BLOCKS IN THE DATA TABLE
      */
-    SlotIterator(std::vector<DataTableVersion>::const_iterator dt_version, DataTable::SlotIterator dt_slot_it)
+    SlotIterator(std::map<layout_version_t, DataTableVersion>::const_iterator dt_version, DataTable::SlotIterator dt_slot_it)
         : dt_version_(dt_version), current_it_(dt_slot_it) {}
 
-    std::vector<DataTableVersion>::const_iterator dt_version_;
+    std::map<layout_version_t, DataTableVersion>::const_iterator dt_version_;
     DataTable::SlotIterator current_it_;
   };
 
