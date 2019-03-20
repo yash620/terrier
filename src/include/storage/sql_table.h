@@ -55,9 +55,9 @@ class SqlTable {
      */
     SlotIterator &operator++() {
       current_it_++;
-      if (current_it_ == dt_version_->data_table->end()) {
+      if (current_it_ == dt_version_->second.data_table->end()) {
         dt_version_++;
-        current_it_ = dt_version_->data_table->begin();
+        current_it_ = dt_version_->second.data_table->begin();
       }
       return *this;
     }
