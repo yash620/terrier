@@ -206,7 +206,7 @@ class SqlTable {
    */
   SlotIterator begin() const {
     // common::SpinLatch::ScopedSpinLatch guard(&tables_latch_);
-    return {tables_.begin(), tables_.begin()->second->data_table->begin()};
+    return {tables_.begin(), tables_.begin()->second.data_table->begin()};
   }
 
   /**
@@ -219,7 +219,7 @@ class SqlTable {
    */
   SlotIterator end() const {
     // common::SpinLatch::ScopedSpinLatch guard(&tables_latch_);
-    return {--tables_.end(), (--tables_.end())->second->data_table->end()};
+    return {--tables_.end(), (--tables_.end())->second.data_table->end()};
   }
 
   /**
