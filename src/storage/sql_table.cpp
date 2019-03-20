@@ -208,7 +208,7 @@ void SqlTable::Scan(transaction::TransactionContext *const txn, SqlTable::SlotIt
     for (auto &it : dt_ver.column_map) {
       all_col_oids.emplace_back(it.first);
     }
-    auto pair = InitializerForProjectedColumns(all_col_oids, max_tuples, layout_version_t(static_cast<uint32_t>(i)));
+    auto pair = InitializerForProjectedColumns(all_col_oids, max_tuples, layout_version_t(static_cast<uint32_t>(iter.first)));
     auto pr_buffer = common::AllocationUtil::AllocateAligned(pair.first.ProjectedColumnsSize());
     storage::ProjectedColumns *read = pair.first.Initialize(pr_buffer);
 
@@ -243,9 +243,9 @@ std::vector<col_id_t> SqlTable::ColIdsForOids(const std::vector<catalog::col_oid
 
   // Build the input to the initializer constructor
   for (const catalog::col_oid_t col_oid : col_oids) {
-    TERRIER_ASSERT(tables_.at(schema_version).column_map.count(col_oid) > 0,
+    TERRIER_ASSERT(tables_.at(version).column_map.count(col_oid) > 0,
                    "Provided col_oid does not exist in the table.");
-    const col_id_t col_id = tables_.at(schema_version).column_map.at(col_oid);
+    const col_id_t col_id = tables_.at(version).column_map.at(col_oid);
     col_ids.push_back(col_id);
   }
 
@@ -262,7 +262,7 @@ ProjectionMap SqlTable::ProjectionMapForInitializer(const ProjectionInitializerT
     const col_id_t col_id_at_offset = initializer.ColId(i);
     // find the key (col_oid) in the table's map corresponding to the value (col_id)
     const auto oid_to_id =
-        std::find_if(tables_.at(schema_version).column_map.cbegin(), tables_.at(schema_version).column_map.cend(),
+        std::find_if(tables_.at(version).column_map.cbegin(), tables_.at(version).column_map.cend(),
                      [&](const auto &oid_to_id) -> bool { return oid_to_id.second == col_id_at_offset; });
     // insert the mapping from col_oid to projection offset
     projection_map[oid_to_id->first] = i;
