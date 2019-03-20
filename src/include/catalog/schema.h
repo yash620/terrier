@@ -109,10 +109,10 @@ class Schema {
   /**
    * @return version number for this schema
    */
-  const uint32_t GetVersion() const { return version_; }
+  const layout_version_t GetVersion() const { return version_; }
 
  private:
-  const uint32_t version_;
+  const layout_version_t version_;
   const std::vector<Column> columns_;
 };
 }  // namespace terrier::catalog
