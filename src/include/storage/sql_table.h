@@ -117,7 +117,9 @@ class SqlTable {
   ~SqlTable();
 
   /**
-   * Adds the new schema to set of active data tables.
+   * Adds the new schema to set of active data tables.  This functions should
+   * only be called upon commit because there is no mechanism to rollback an
+   * abort (which shouldn't be needed).
    *
    * @param schema the new Schema for the SqlTable (version must be unique)
    */
@@ -126,7 +128,6 @@ class SqlTable {
   /**
    * Materializes a single tuple from the given slot, as visible at the timestamp of the calling txn.
    *
-   * It assumes version_num starts from 0 and never decreases.
    * @param txn the calling transaction
    * @param slot the tuple slot to read
    * @param out_buffer output buffer. The object should already contain projection list information. @see ProjectedRow.

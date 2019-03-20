@@ -46,7 +46,7 @@ class SqlTableTestRW {
     schema_ = new catalog::Schema(cols_);
     layout_ = new storage::BlockLayout(storage::StorageUtil::BlockLayoutFromSchema(*schema_).first);
 
-    table_->ChangeSchema(txn, new_schema);
+    table_->UpdateSchema(new_schema);
 
     col_oids_.clear();
     for (const auto &c : cols_) {
