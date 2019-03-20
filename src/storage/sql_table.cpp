@@ -199,9 +199,9 @@ void SqlTable::Scan(transaction::TransactionContext *const txn, SqlTable::SlotIt
   uint32_t total_filled = 0;
   // For each DataTable
   for (auto iter : tables_) {
-    if (start_version > iter->first) continue;
+    if (start_version > iter.first) continue;
 
-    DataTableVersion dt_ver = iter->second;
+    DataTableVersion dt_ver = iter.second;
 
     // Scan the DataTable
     std::vector<catalog::col_oid_t> all_col_oids;
@@ -212,7 +212,7 @@ void SqlTable::Scan(transaction::TransactionContext *const txn, SqlTable::SlotIt
     auto pr_buffer = common::AllocationUtil::AllocateAligned(pair.first.ProjectedColumnsSize());
     storage::ProjectedColumns *read = pair.first.Initialize(pr_buffer);
 
-    if (start_version == iter->first) {
+    if (start_version == iter.first) {
       DataTable::SlotIterator dt_slot = start_pos->GetDataTableSlotIterator();
       dt_ver.data_table->Scan(txn, &dt_slot, read);
     } else {
