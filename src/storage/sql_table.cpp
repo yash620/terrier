@@ -24,6 +24,7 @@ void SqlTable::UpdateSchema(const catalog::Schema &schema) {
   tables_[schema.GetVersion()] = {
       new DataTable(block_store_, layout_and_map.first, schema.GetVersion()), layout_and_map.first,
       layout_and_map.second};
+  STORAGE_LOG_INFO("# of versions: {}", tables_.size());
 }
 
 bool SqlTable::Select(transaction::TransactionContext *const txn, const TupleSlot slot, ProjectedRow *const out_buffer,

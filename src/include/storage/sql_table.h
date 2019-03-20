@@ -223,28 +223,6 @@ class SqlTable {
   }
 
   /**
-   * Change the schema of the SqlTable. Only one transaction is allowed to change schema at a time.
-   *
-   * Note:
-   *    1. tables_ is a vector of DataTableVersions which grows infinitely
-   *    2. version_num is used to index DataTableVersion
-   *
-   * @param txn the calling transaction
-   * @param schema the new schema
-   */
-  void ChangeSchema(transaction::TransactionContext *const txn, const catalog::Schema &schema) {
-    common::SpinLatch::ScopedSpinLatch guard(&tables_latch_);
-    schema_version_++;
-    const auto layout_and_map = StorageUtil::BlockLayoutFromSchema(schema);
-    DataTableVersion new_dt_version = {
-        new DataTable(block_store_, layout_and_map.first, layout_version_t(schema_version_)), layout_and_map.first,
-        layout_and_map.second};
-    tables_.emplace_back(new_dt_version);
-    STORAGE_LOG_INFO("# of versions: {}", tables_.size());
-    // TODO(yangjuns): update catalog
-  }
-
-  /**
    * @return table's unique identifier
    */
   catalog::table_oid_t Oid() const { return oid_; }
