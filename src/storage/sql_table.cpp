@@ -82,7 +82,7 @@ bool SqlTable::Select(transaction::TransactionContext *const txn, const TupleSlo
  * @return true if successful, false otherwise; If the update changed the location of the TupleSlot, a new TupleSlot
  * is returned. Otherwise, the same TupleSlot is returned.
  */
-std::pair<bool, storage::TupleSlot> Update(transaction::TransactionContext *const txn, const TupleSlot slot,
+std::pair<bool, storage::TupleSlot> SqlTable::Update(transaction::TransactionContext *const txn, const TupleSlot slot,
                                            const ProjectedRow &redo, const ProjectionMap &map,
                                            layout_version_t version_num) {
   // TODO(Matt): check constraints? Discuss if that happens in execution layer or not
