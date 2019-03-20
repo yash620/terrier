@@ -191,7 +191,7 @@ std::pair<bool, storage::TupleSlot> SqlTable::Update(transaction::TransactionCon
   return std::make_pair(true, ret_slot);
 }
 
-void Scan(transaction::TransactionContext *const txn, SqlTable::SlotIterator *const start_pos,
+void SqlTable::Scan(transaction::TransactionContext *const txn, SqlTable::SlotIterator *const start_pos,
           ProjectedColumns *const out_buffer, const ProjectionMap &pr_map, layout_version_t version_num) const {
   uint32_t max_tuples = out_buffer->MaxTuples();
   layout_version_t start_version = start_pos->operator*().GetBlock()->layout_version_;
