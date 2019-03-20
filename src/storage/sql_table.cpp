@@ -30,7 +30,7 @@ void UpdateSchema(const catalog::Schema &schema) {
 }
 
 std::vector<col_id_t> SqlTable::ColIdsForOids(const std::vector<catalog::col_oid_t> &col_oids,
-                                              uint32_t schema_version) const {
+                                              layout_version_t version) const {
   TERRIER_ASSERT(!col_oids.empty(), "Should be used to access at least one column.");
   std::vector<col_id_t> col_ids;
 
@@ -47,7 +47,7 @@ std::vector<col_id_t> SqlTable::ColIdsForOids(const std::vector<catalog::col_oid
 
 template <class ProjectionInitializerType>
 ProjectionMap SqlTable::ProjectionMapForInitializer(const ProjectionInitializerType &initializer,
-                                                    uint32_t schema_version) const {
+                                                    layout_version_t version) const {
   ProjectionMap projection_map;
   // for every attribute in the initializer
   for (uint16_t i = 0; i < initializer.NumColumns(); i++) {
@@ -65,8 +65,8 @@ ProjectionMap SqlTable::ProjectionMapForInitializer(const ProjectionInitializerT
 }
 
 template ProjectionMap SqlTable::ProjectionMapForInitializer<ProjectedColumnsInitializer>(
-    const ProjectedColumnsInitializer &initializer, uint32_t schema_version = 0) const;
+    const ProjectedColumnsInitializer &initializer, layout_version_t version) const;
 template ProjectionMap SqlTable::ProjectionMapForInitializer<ProjectedRowInitializer>(
-    const ProjectedRowInitializer &initializer, uint32_t schema_version = 0) const;
+    const ProjectedRowInitializer &initializer, layout_version_t version) const;
 
 }  // namespace terrier::storage

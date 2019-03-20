@@ -1,6 +1,7 @@
 #pragma once
 #include <unordered_map>
 #include <utility>
+#include <vector>
 #include "common/macros.h"
 #include "common/strong_typedef.h"
 #include "storage/block_layout.h"
@@ -66,6 +67,25 @@ class StorageUtil {
                                      uint16_t projection_list_offset);
 
   /**
+   * Copy from a projection to another projection from a different data-table block, which has different block layout.
+   *
+   * Note that this function understand the notion of col_oid, so it knows Sql concepts.
+   *
+   * 1) It only copies the columns that exist in both ProjectedRows
+   * 2) For columns that only exist in the destination row, it is set to NULL. (This should be changed to default values
+   * in the future).
+   * @tparam RowType1 ProjectedRow or ProjectedColumns::RowView
+   * @tparam RowType2 ProjectedRow or ProjectedColumns::RowView
+   * @param from the source row
+   * @param from_map the source ProjectionMap
+   * @param layout the block layout of the source row
+   * @param to the destination row
+   * @param to_map the destination ProjectionMap
+   */
+  template <class RowType1, class RowType2>
+  static void CopyProjectionIntoProjection(const RowType1 &from, const ProjectionMap &from_map,
+                                           const BlockLayout &layout, RowType2 *to, const ProjectionMap &to_map);
+  /**
    * Applies delta into the given buffer.
    *
    * Specifically, columns present in the delta will have their value (or lack of value, in the case of null) copied
@@ -119,5 +139,12 @@ class StorageUtil {
    * @return pair of BlockLayout and a map between col_oid_t and col_id
    */
   static std::pair<BlockLayout, ColumnMap> BlockLayoutFromSchema(const catalog::Schema &schema);
+
+  /**
+   * Given a layout, it generations a projection list that includes all the columns.
+   * @param layout the given layout
+   * @return a vector of all column ids
+   */
+  static std::vector<storage::col_id_t> ProjectionListAllColumns(const storage::BlockLayout &layout);
 };
 }  // namespace terrier::storage

@@ -5,6 +5,7 @@
 #include <vector>
 #include "catalog/schema.h"
 #include "storage/projected_columns.h"
+#include "storage/sql_table.h"
 #include "storage/tuple_access_strategy.h"
 #include "storage/undo_record.h"
 namespace terrier::storage {
@@ -57,6 +58,53 @@ template void StorageUtil::CopyAttrFromProjection<ProjectedRow>(const TupleAcces
 template void StorageUtil::CopyAttrFromProjection<ProjectedColumns::RowView>(const TupleAccessStrategy &, TupleSlot,
                                                                              const ProjectedColumns::RowView &,
                                                                              uint16_t);
+
+template <class RowType1, class RowType2>
+void StorageUtil::CopyProjectionIntoProjection(const RowType1 &from, const ProjectionMap &from_map,
+                                               const BlockLayout &layout, RowType2 *const to,
+                                               const ProjectionMap &to_map) {
+  // copy values
+  for (auto &it : from_map) {
+    if (to_map.count(it.first) > 0) {
+      // get the data bytes
+      const byte *value = from.AccessWithNullCheck(from_map.at(it.first));
+
+      // get the offset where we copy into
+      uint16_t offset = to_map.at(it.first);
+      if (value == nullptr) {
+        to->SetNull(offset);
+      } else {
+        to->SetNotNull(offset);
+        // get the size of the attribute
+        uint8_t attr_size = layout.AttrSize(from.ColumnIds()[it.second]);
+
+        // get the address where we copy into
+        uint16_t offset = to_map.at(it.first);
+
+        byte *addr = to->AccessForceNotNull(offset);
+        // Copy things over
+        std::memcpy(addr, value, attr_size);
+      }
+    }
+    // Fill with default values
+    // TODO(yangjuns): fill will default values instead of setting it to be null
+    for (auto &it : to_map) {
+      if (from_map.count(it.first) == 0) {
+        to->SetNull(it.second);
+      }
+    }
+  }
+}
+
+template void StorageUtil::CopyProjectionIntoProjection<ProjectedRow, ProjectedRow>(const ProjectedRow &from,
+                                                                                    const ProjectionMap &from_map,
+                                                                                    const BlockLayout &from_tas,
+                                                                                    ProjectedRow *const to,
+                                                                                    const ProjectionMap &to_map);
+
+template void StorageUtil::CopyProjectionIntoProjection<ProjectedColumns::RowView, ProjectedColumns::RowView>(
+    const ProjectedColumns::RowView &from, const ProjectionMap &from_map, const BlockLayout &from_tas,
+    ProjectedColumns::RowView *const to, const ProjectionMap &to_map);
 
 template <class RowType>
 void StorageUtil::ApplyDelta(const BlockLayout &layout, const ProjectedRow &delta, RowType *const buffer) {
@@ -175,4 +223,13 @@ std::pair<BlockLayout, ColumnMap> StorageUtil::BlockLayoutFromSchema(const catal
   return {storage::BlockLayout(attr_sizes), col_oid_to_id};
 }
 
+std::vector<storage::col_id_t> StorageUtil::ProjectionListAllColumns(const storage::BlockLayout &layout) {
+  std::vector<storage::col_id_t> col_ids(layout.NumColumns() - NUM_RESERVED_COLUMNS);
+  // Add all of the column ids from the layout to the projection list
+  // 0 is version vector so we skip it
+  for (uint16_t col = NUM_RESERVED_COLUMNS; col < layout.NumColumns(); col++) {
+    col_ids[col - NUM_RESERVED_COLUMNS] = storage::col_id_t(col);
+  }
+  return col_ids;
+}
 }  // namespace terrier::storage
