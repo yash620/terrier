@@ -46,7 +46,7 @@ class SqlTableTestRW {
     schema_ = new catalog::Schema(cols_);
     layout_ = new storage::BlockLayout(storage::StorageUtil::BlockLayoutFromSchema(*schema_).first);
 
-    table_->UpdateSchema(new_schema, 1);
+    table_->UpdateSchema(new_schema, ++curr_version_);
 
     col_oids_.clear();
     for (const auto &c : cols_) {
@@ -227,6 +227,8 @@ class SqlTableTestRW {
 
   byte *buffer_ = nullptr;
   storage::ProjectedRow *pr_ = nullptr;
+
+  storage::layout_version_t curr_version_;
 
   void ResetProjectedRow(const std::vector<catalog::col_oid_t> &col_oids) {
     auto pr_pair = table_->InitializerForProjectedRow(col_oids, version_);
