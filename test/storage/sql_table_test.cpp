@@ -43,7 +43,7 @@ class SqlTableTestRW {
     catalog::Schema new_schema(cols_);
     delete schema_;
     delete layout_;
-    schema_ = new catalog::Schema(cols_, ++curr_version_);
+    schema_ = new catalog::Schema(cols_, next_version_++);
     layout_ = new storage::BlockLayout(storage::StorageUtil::BlockLayoutFromSchema(*schema_).first);
 
     table_->UpdateSchema(new_schema);
@@ -66,7 +66,7 @@ class SqlTableTestRW {
    * Create the SQL table.
    */
   void Create() {
-    schema_ = new catalog::Schema(cols_);
+    schema_ = new catalog::Schema(cols_, next_version_++);
     table_ = new storage::SqlTable(&block_store_, *schema_, table_oid_);
 
     layout_ = new storage::BlockLayout(storage::StorageUtil::BlockLayoutFromSchema(*schema_).first);
@@ -228,7 +228,7 @@ class SqlTableTestRW {
   byte *buffer_ = nullptr;
   storage::ProjectedRow *pr_ = nullptr;
 
-  storage::layout_version_t curr_version_ = storage::layout_version_t(0);
+  storage::layout_version_t next_version_ = storage::layout_version_t(0);
 
   void ResetProjectedRow(const std::vector<catalog::col_oid_t> &col_oids) {
     auto pr_pair = table_->InitializerForProjectedRow(col_oids, version_);
