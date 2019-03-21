@@ -109,7 +109,29 @@ BENCHMARK_DEFINE_F(SqlTableBenchmark, SimpleInsert)(benchmark::State &state) {
 
 // Insert the num_inserts_ of tuples into a DataTable in a single thread
 // NOLINTNEXTLINE
-BENCHMARK_DEFINE_F(SqlTableBenchmark, SimpleRandomRead)(benchmark::State &state) {
+BENCHMARK_DEFINE_F(SqlTableBenchmark, SingleVersionSequentialRead)(benchmark::State &state) {
+  // Populate read_table_ by inserting tuples
+  // We can use dummy timestamps here since we're not invoking concurrency control
+  transaction::TransactionContext txn(transaction::timestamp_t(0), transaction::timestamp_t(0), &buffer_pool_,
+                                      LOGGING_DISABLED);
+  std::vector<storage::TupleSlot> read_order;
+  for (uint32_t i = 0; i < num_reads_; ++i) {
+    read_order.emplace_back(table_->Insert(&txn, *redo_, storage::layout_version_t(0)));
+  }
+
+  // NOLINTNEXTLINE
+  for (auto _ : state) {
+    for (uint32_t i = 0; i < num_inserts_; ++i) {
+      table_->Select(&txn, read_order[i], read_, *map_, storage::layout_version_t(0));
+    }
+  }
+
+  state.SetItemsProcessed(state.iterations() * num_inserts_);
+}
+
+// Insert the num_inserts_ of tuples into a DataTable in a single thread
+// NOLINTNEXTLINE
+BENCHMARK_DEFINE_F(SqlTableBenchmark, SingleVersionRandomRead)(benchmark::State &state) {
   // Populate read_table_ by inserting tuples
   // We can use dummy timestamps here since we're not invoking concurrency control
   transaction::TransactionContext txn(transaction::timestamp_t(0), transaction::timestamp_t(0), &buffer_pool_,
@@ -133,5 +155,7 @@ BENCHMARK_DEFINE_F(SqlTableBenchmark, SimpleRandomRead)(benchmark::State &state)
 
 BENCHMARK_REGISTER_F(SqlTableBenchmark, SimpleInsert)->Unit(benchmark::kMillisecond);
 
-BENCHMARK_REGISTER_F(SqlTableBenchmark, SimpleRandomRead)->Unit(benchmark::kMillisecond);
+BENCHMARK_REGISTER_F(SqlTableBenchmark, SingleVersionSequentialRead)->Unit(benchmark::kMillisecond);
+
+BENCHMARK_REGISTER_F(SqlTableBenchmark, SingleVersionRandomRead)->Unit(benchmark::kMillisecond);
 }  // namespace terrier
