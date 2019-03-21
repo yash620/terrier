@@ -228,7 +228,7 @@ class SqlTableTestRW {
   byte *buffer_ = nullptr;
   storage::ProjectedRow *pr_ = nullptr;
 
-  storage::layout_version_t curr_version_;
+  storage::layout_version_t curr_version_ = 0;
 
   void ResetProjectedRow(const std::vector<catalog::col_oid_t> &col_oids) {
     auto pr_pair = table_->InitializerForProjectedRow(col_oids, version_);
