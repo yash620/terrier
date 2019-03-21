@@ -200,8 +200,8 @@ class SqlTable {
    * @param pr_map the ProjectionMap for the Projected Columns
    * @param version_num the schema version which the transaction sees
    */
-  void Scan(transaction::TransactionContext *txn, SqlTable::SlotIterator *start_pos,
-            ProjectedColumns *out_buffer, const ProjectionMap &pr_map, layout_version_t version_num) const;
+  void Scan(transaction::TransactionContext *txn, SqlTable::SlotIterator *start_pos, ProjectedColumns *out_buffer,
+            const ProjectionMap &pr_map, layout_version_t version_num) const;
 
   /**
    * @return the first tuple slot contained in the data table
