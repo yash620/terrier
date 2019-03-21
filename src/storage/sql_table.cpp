@@ -20,7 +20,7 @@ SqlTable::~SqlTable() {
 }
 
 void SqlTable::UpdateSchema(const catalog::Schema &schema) {
-  STORAGE_LOG_INFO("Updating schema to version: {}", uint32_t(schema.GetVersion()));
+  STORAGE_LOG_INFO("Update schema version: {}", uint32_t(schema.GetVersion()));
   TERRIER_ASSERT(tables_.find(schema.GetVersion()) == tables_.end(), "schema versions for an SQL table must be unique");
   const auto layout_and_map = StorageUtil::BlockLayoutFromSchema(schema);
   tables_[schema.GetVersion()] = {new DataTable(block_store_, layout_and_map.first, schema.GetVersion()),
@@ -30,7 +30,7 @@ void SqlTable::UpdateSchema(const catalog::Schema &schema) {
 
 bool SqlTable::Select(transaction::TransactionContext *const txn, const TupleSlot slot, ProjectedRow *const out_buffer,
                       const ProjectionMap &pr_map, layout_version_t version_num) const {
-  STORAGE_LOG_INFO("slot version : {}, current version: {}", !slot.GetBlock()->layout_version_, !version_num);
+  STORAGE_LOG_INFO("slot version: {}, current version: {}", !slot.GetBlock()->layout_version_, !version_num);
 
   layout_version_t old_version_num = slot.GetBlock()->layout_version_;
 
