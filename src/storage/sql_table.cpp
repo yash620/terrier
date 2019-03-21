@@ -20,7 +20,7 @@ SqlTable::~SqlTable() {
 }
 
 void SqlTable::UpdateSchema(const catalog::Schema &schema) {
-  STORAGE_LOG_INFO("Updating schema to version: {}", uint32(schema.GetVersion()));
+  STORAGE_LOG_INFO("Updating schema to version: {}", uint32_t(schema.GetVersion()));
   TERRIER_ASSERT(tables_.find(schema.GetVersion()) == tables_.end(), "schema versions for an SQL table must be unique");
   const auto layout_and_map = StorageUtil::BlockLayoutFromSchema(schema);
   tables_[schema.GetVersion()] = {new DataTable(block_store_, layout_and_map.first, schema.GetVersion()),
