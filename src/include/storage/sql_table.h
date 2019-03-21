@@ -136,7 +136,7 @@ class SqlTable {
    * @param version_num the schema version which the transaction sees
    * @return true if tuple is visible to this txn and ProjectedRow has been populated, false otherwise
    */
-  bool Select(transaction::TransactionContext *const txn, const TupleSlot slot, ProjectedRow *const out_buffer,
+  bool Select(transaction::TransactionContext *txn, TupleSlot slot, ProjectedRow *out_buffer,
               const ProjectionMap &pr_map, layout_version_t version_num) const;
 
   /**
@@ -150,7 +150,7 @@ class SqlTable {
    * @return true if successful, false otherwise; If the update changed the location of the TupleSlot, a new TupleSlot
    * is returned. Otherwise, the same TupleSlot is returned.
    */
-  std::pair<bool, storage::TupleSlot> Update(transaction::TransactionContext *const txn, const TupleSlot slot,
+  std::pair<bool, storage::TupleSlot> Update(transaction::TransactionContext *txn, TupleSlot slot,
                                              const ProjectedRow &redo, const ProjectionMap &map,
                                              layout_version_t version_num);
 
@@ -200,8 +200,8 @@ class SqlTable {
    * @param pr_map the ProjectionMap for the Projected Columns
    * @param version_num the schema version which the transaction sees
    */
-  void Scan(transaction::TransactionContext *const txn, SqlTable::SlotIterator *const start_pos,
-            ProjectedColumns *const out_buffer, const ProjectionMap &pr_map, layout_version_t version_num) const;
+  void Scan(transaction::TransactionContext *txn, SqlTable::SlotIterator *start_pos,
+            ProjectedColumns *out_buffer, const ProjectionMap &pr_map, layout_version_t version_num) const;
 
   /**
    * @return the first tuple slot contained in the data table

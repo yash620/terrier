@@ -67,9 +67,6 @@ bool SqlTable::Select(transaction::TransactionContext *const txn, const TupleSlo
   return true;
 }
 
-bool SqlTable::Select(transaction::TransactionContext *const txn, const TupleSlot slot, ProjectedRow *const out_buffer,
-                      const ProjectionMap &pr_map, layout_version_t version_num) const;
-
 /**
  * Update the tuple according to the redo buffer given.
  *
