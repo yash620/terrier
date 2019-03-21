@@ -40,13 +40,12 @@ class SqlTableTestRW {
                  catalog::col_oid_t oid) {
     // update columns, schema and layout
     cols_.emplace_back(name, type, nullable, oid);
-    catalog::Schema new_schema(cols_);
     delete schema_;
     delete layout_;
     schema_ = new catalog::Schema(cols_, next_version_++);
     layout_ = new storage::BlockLayout(storage::StorageUtil::BlockLayoutFromSchema(*schema_).first);
 
-    table_->UpdateSchema(new_schema);
+    table_->UpdateSchema(schema_);
 
     col_oids_.clear();
     for (const auto &c : cols_) {
