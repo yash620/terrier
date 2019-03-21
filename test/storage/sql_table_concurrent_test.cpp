@@ -107,8 +107,8 @@ TEST_F(SqlTableConcurrentTests, ConcurrentChangeSchema) {
     auto workload = [&](uint32_t id) {
       // Get random schema
       for (uint32_t i = 0; i < num_changes / num_threads; i++) {
-        catalog::Schema schema = CatalogTestUtil::RandomSchemaNoVarchar(max_columns, &generator_);
-        test.UpdateSchema(schema, storage::layout_version_t(id * num_threads + i));
+        catalog::Schema schema = CatalogTestUtil::RandomSchemaNoVarchar(max_columns, &generator_, storage::layout_version_t(id * num_threads + i));
+        test.UpdateSchema(schema);
       }
       txn_manager_.Commit(txns[id], TestCallbacks::EmptyCallback, nullptr);
     };

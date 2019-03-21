@@ -43,10 +43,10 @@ class SqlTableTestRW {
     catalog::Schema new_schema(cols_);
     delete schema_;
     delete layout_;
-    schema_ = new catalog::Schema(cols_);
+    schema_ = new catalog::Schema(cols_, ++curr_version_);
     layout_ = new storage::BlockLayout(storage::StorageUtil::BlockLayoutFromSchema(*schema_).first);
 
-    table_->UpdateSchema(new_schema, ++curr_version_);
+    table_->UpdateSchema(new_schema);
 
     col_oids_.clear();
     for (const auto &c : cols_) {
