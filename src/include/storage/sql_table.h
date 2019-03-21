@@ -30,8 +30,8 @@ class SqlTable {
     DataTable *data_table;
     BlockLayout layout;
     ColumnMap column_map;
-    //TODO(John): Add 'inverse_column_map' and populate during create
-    //TODO(John): Add 'default_value_map' (dynamic) for col_oid->default_val
+    // TODO(John): Add 'inverse_column_map' and populate during create
+    // TODO(John): Add 'default_value_map' (dynamic) for col_oid->default_val
   };
 
   /**
@@ -93,7 +93,8 @@ class SqlTable {
     /**
      * @warning MUST BE CALLED ONLY WHEN CALLER HOLDS LOCK TO THE LIST OF RAW BLOCKS IN THE DATA TABLE
      */
-    SlotIterator(std::map<layout_version_t, DataTableVersion>::const_iterator dt_version, DataTable::SlotIterator dt_slot_it)
+    SlotIterator(std::map<layout_version_t, DataTableVersion>::const_iterator dt_version,
+                 DataTable::SlotIterator dt_slot_it)
         : dt_version_(dt_version), current_it_(dt_slot_it) {}
 
     std::map<layout_version_t, DataTableVersion>::const_iterator dt_version_;

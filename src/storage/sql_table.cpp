@@ -21,14 +21,13 @@ SqlTable::~SqlTable() {
 void SqlTable::UpdateSchema(const catalog::Schema &schema) {
   TERRIER_ASSERT(tables_.find(schema.GetVersion()) == tables_.end(), "schema versions for an SQL table must be unique");
   const auto layout_and_map = StorageUtil::BlockLayoutFromSchema(schema);
-  tables_[schema.GetVersion()] = {
-      new DataTable(block_store_, layout_and_map.first, schema.GetVersion()), layout_and_map.first,
-      layout_and_map.second};
+  tables_[schema.GetVersion()] = {new DataTable(block_store_, layout_and_map.first, schema.GetVersion()),
+                                  layout_and_map.first, layout_and_map.second};
   STORAGE_LOG_INFO("# of versions: {}", tables_.size());
 }
 
 bool SqlTable::Select(transaction::TransactionContext *const txn, const TupleSlot slot, ProjectedRow *const out_buffer,
-            const ProjectionMap &pr_map, layout_version_t version_num) const {
+                      const ProjectionMap &pr_map, layout_version_t version_num) const {
   STORAGE_LOG_INFO("slot version : {}, current version: {}", !slot.GetBlock()->layout_version_, !version_num);
 
   layout_version_t old_version_num = slot.GetBlock()->layout_version_;
@@ -61,15 +60,14 @@ bool SqlTable::Select(transaction::TransactionContext *const txn, const TupleSlo
 
   // 2. Convert it into new ProjectedRow
   // TODO(yangjuns): fill in default values for newly added attributes
-  StorageUtil::CopyProjectionIntoProjection(*pr_buffer, old_pr_pair.second, old_dt_version.layout, out_buffer,
-                                            pr_map);
+  StorageUtil::CopyProjectionIntoProjection(*pr_buffer, old_pr_pair.second, old_dt_version.layout, out_buffer, pr_map);
 
   delete[] read_buffer;
   return true;
 }
 
 bool SqlTable::Select(transaction::TransactionContext *const txn, const TupleSlot slot, ProjectedRow *const out_buffer,
-            const ProjectionMap &pr_map, layout_version_t version_num) const;
+                      const ProjectionMap &pr_map, layout_version_t version_num) const;
 
 /**
  * Update the tuple according to the redo buffer given.
@@ -83,8 +81,8 @@ bool SqlTable::Select(transaction::TransactionContext *const txn, const TupleSlo
  * is returned. Otherwise, the same TupleSlot is returned.
  */
 std::pair<bool, storage::TupleSlot> SqlTable::Update(transaction::TransactionContext *const txn, const TupleSlot slot,
-                                           const ProjectedRow &redo, const ProjectionMap &map,
-                                           layout_version_t version_num) {
+                                                     const ProjectedRow &redo, const ProjectionMap &map,
+                                                     layout_version_t version_num) {
   // TODO(Matt): check constraints? Discuss if that happens in execution layer or not
   // TODO(Matt): update indexes
   STORAGE_LOG_INFO("Update slot version : {}, current version: {}", !slot.GetBlock()->layout_version_, !version_num);
@@ -192,7 +190,8 @@ std::pair<bool, storage::TupleSlot> SqlTable::Update(transaction::TransactionCon
 }
 
 void SqlTable::Scan(transaction::TransactionContext *const txn, SqlTable::SlotIterator *const start_pos,
-          ProjectedColumns *const out_buffer, const ProjectionMap &pr_map, layout_version_t version_num) const {
+                    ProjectedColumns *const out_buffer, const ProjectionMap &pr_map,
+                    layout_version_t version_num) const {
   uint32_t max_tuples = out_buffer->MaxTuples();
   layout_version_t start_version = start_pos->operator*().GetBlock()->layout_version_;
 
@@ -208,7 +207,8 @@ void SqlTable::Scan(transaction::TransactionContext *const txn, SqlTable::SlotIt
     for (auto &it : dt_ver.column_map) {
       all_col_oids.emplace_back(it.first);
     }
-    auto pair = InitializerForProjectedColumns(all_col_oids, max_tuples, layout_version_t(static_cast<uint32_t>(iter.first)));
+    auto pair =
+        InitializerForProjectedColumns(all_col_oids, max_tuples, layout_version_t(static_cast<uint32_t>(iter.first)));
     auto pr_buffer = common::AllocationUtil::AllocateAligned(pair.first.ProjectedColumnsSize());
     storage::ProjectedColumns *read = pair.first.Initialize(pr_buffer);
 
@@ -243,8 +243,7 @@ std::vector<col_id_t> SqlTable::ColIdsForOids(const std::vector<catalog::col_oid
 
   // Build the input to the initializer constructor
   for (const catalog::col_oid_t col_oid : col_oids) {
-    TERRIER_ASSERT(tables_.at(version).column_map.count(col_oid) > 0,
-                   "Provided col_oid does not exist in the table.");
+    TERRIER_ASSERT(tables_.at(version).column_map.count(col_oid) > 0, "Provided col_oid does not exist in the table.");
     const col_id_t col_id = tables_.at(version).column_map.at(col_oid);
     col_ids.push_back(col_id);
   }
