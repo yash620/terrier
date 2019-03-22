@@ -122,8 +122,8 @@ BENCHMARK_DEFINE_F(SqlTableBenchmark, MultiVersionSequentialRead)(benchmark::Sta
   catalog::col_oid_t col_oid(column_num_);
   std::vector<catalog::Schema::Column> new_columns(columns_.begin(), columns_.end() - 1);
   new_columns.emplace_back("", type::TypeId::BIGINT, false, col_oid);
-  catalog::Schema new_schame(new_columns);
-  table_->ChangeSchema(&txn, new_schame);
+  catalog::Schema new_schame(new_columns, storage::layout_version_t(1));
+  table_->UpdateSchema(new_schame);
 
   // create a new read buffer
   std::vector<catalog::col_oid_t> all_col_oids;
