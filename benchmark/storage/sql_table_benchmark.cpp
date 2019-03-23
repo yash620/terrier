@@ -48,6 +48,15 @@ class SqlTableBenchmark : public benchmark::Fixture {
     // generate a ProjectedRow buffer to Read
     read_buffer_ = common::AllocationUtil::AllocateAligned(initializer_->ProjectedRowSize());
     read_ = initializer_->InitializeRow(read_buffer_);
+
+    // generate a vector of ProjectedRow buffers for concurrent reads
+    for (uint32_t i = 0; i < num_threads_; ++i) {
+      // Create read buffer
+      byte *read_buffer = common::AllocationUtil::AllocateAligned(initializer_->ProjectedRowSize());
+      storage::ProjectedRow *read = initializer_->InitializeRow(read_buffer);
+      read_buffers_.emplace_back(read_buffer);
+      reads_.emplace_back(read);
+    }
   }
 
   void TearDown(const benchmark::State &state) final {
@@ -57,7 +66,10 @@ class SqlTableBenchmark : public benchmark::Fixture {
     delete initializer_;
     delete map_;
     delete table_;
+    for (uint32_t i = 0; i < num_threads_; ++i) delete[] read_buffers_[i];
     columns_.clear();
+    read_buffers_.clear();
+    reads_.clear();
   }
 
   // Sql Table
@@ -90,6 +102,10 @@ class SqlTableBenchmark : public benchmark::Fixture {
   // Read buffer pointers;
   byte *read_buffer_;
   storage::ProjectedRow *read_;
+
+  // Read buffers pointers for concurrent reads
+  std::vector<byte *> read_buffers_;
+  std::vector<storage::ProjectedRow *> reads_;
 };
 
 // Insert the num_inserts_ of tuples into a SqlTable in a single thread
@@ -167,8 +183,8 @@ BENCHMARK_DEFINE_F(SqlTableBenchmark, MultiVersionMismatchSequentialRead)(benchm
   catalog::col_oid_t col_oid(column_num_);
   std::vector<catalog::Schema::Column> new_columns(columns_.begin(), columns_.end() - 1);
   new_columns.emplace_back("", type::TypeId::BIGINT, false, col_oid);
-  catalog::Schema new_schame(new_columns, storage::layout_version_t(1));
-  table_->UpdateSchema(new_schame);
+  catalog::Schema new_schema(new_columns, storage::layout_version_t(1));
+  table_->UpdateSchema(new_schema);
 
   // create a new read buffer
   std::vector<catalog::col_oid_t> all_col_oids(new_columns.size());
@@ -225,7 +241,7 @@ BENCHMARK_DEFINE_F(SqlTableBenchmark, MultiVersionMatchSequentialRead)(benchmark
       table_->Select(&txn, read_order[i], read_pr, pair.second, storage::layout_version_t(1));
     }
   }
-  delete[] insert_buffer;
+  delete[] read_buffer;
   state.SetItemsProcessed(state.iterations() * num_inserts_);
 }
 
@@ -270,8 +286,8 @@ BENCHMARK_DEFINE_F(SqlTableBenchmark, MultiVersionMismatchRandomRead)(benchmark:
   catalog::col_oid_t col_oid(column_num_);
   std::vector<catalog::Schema::Column> new_columns(columns_.begin(), columns_.end() - 1);
   new_columns.emplace_back("", type::TypeId::BIGINT, false, col_oid);
-  catalog::Schema new_schame(new_columns, storage::layout_version_t(1));
-  table_->UpdateSchema(new_schame);
+  catalog::Schema new_schema(new_columns, storage::layout_version_t(1));
+  table_->UpdateSchema(new_schema);
 
   // create a new read buffer
   std::vector<catalog::col_oid_t> all_col_oids(new_columns.size());
@@ -334,7 +350,103 @@ BENCHMARK_DEFINE_F(SqlTableBenchmark, MultiVersionMatchRandomRead)(benchmark::St
       table_->Select(&txn, read_order[i], read_pr, pair.second, storage::layout_version_t(1));
     }
   }
-  delete[] insert_buffer;
+  delete[] read_buffer;
+  state.SetItemsProcessed(state.iterations() * num_inserts_);
+}
+
+// Read the num_reads_ of tuples in a random order from a SqlTable concurrently
+// The SqlTable has only a single versions
+// NOLINTNEXTLINE
+BENCHMARK_DEFINE_F(SqlTableBenchmark, ConcurrentSingleVersionRead)(benchmark::State &state) {
+  // Populate read_table_ by inserting tuples
+  // We can use dummy timestamps here since we're not invoking concurrency control
+  transaction::TransactionContext txn(transaction::timestamp_t(0), transaction::timestamp_t(0), &buffer_pool_,
+                                      LOGGING_DISABLED);
+  std::vector<storage::TupleSlot> read_order;
+  for (uint32_t i = 0; i < num_reads_; ++i) {
+    read_order.emplace_back(table_->Insert(&txn, *redo_, storage::layout_version_t(0)));
+  }
+  // Generate random read orders and read buffer for each thread
+  std::shuffle(read_order.begin(), read_order.end(), generator_);
+  std::uniform_int_distribution<uint32_t> rand_start(0, static_cast<uint32_t>(read_order.size() - 1));
+  std::vector<uint32_t> rand_read_offsets;
+  for (uint32_t i = 0; i < num_threads_; ++i) {
+    // Create random reads
+    rand_read_offsets.emplace_back(rand_start(generator_));
+  }
+  // NOLINTNEXTLINE
+  for (auto _ : state) {
+    auto workload = [&](uint32_t id) {
+      // We can use dummy timestamps here since we're not invoking concurrency control
+      transaction::TransactionContext txn(transaction::timestamp_t(0), transaction::timestamp_t(0), &buffer_pool_,
+                                          LOGGING_DISABLED);
+      for (uint32_t i = 0; i < num_inserts_ / num_threads_; ++i) {
+        table_->Select(&txn, read_order[(rand_read_offsets[id] + i) % read_order.size()], reads_[id], *map_,
+                       storage::layout_version_t(0));
+      }
+    };
+    common::WorkerPool thread_pool(num_threads_, {});
+    MultiThreadTestUtil::RunThreadsUntilFinish(&thread_pool, num_threads_, workload);
+  }
+
+  state.SetItemsProcessed(state.iterations() * num_inserts_);
+}
+
+// Read the num_reads_ of tuples in a random order from a SqlTable concurrently
+// The SqlTable has multiple schema versions and the read version mismatches the one stored in the storage layer
+// NOLINTNEXTLINE
+BENCHMARK_DEFINE_F(SqlTableBenchmark, ConcurrentMultiVersionRead)(benchmark::State &state) {
+  // Populate read_table_ by inserting tuples
+  // We can use dummy timestamps here since we're not invoking concurrency control
+  transaction::TransactionContext txn(transaction::timestamp_t(0), transaction::timestamp_t(0), &buffer_pool_,
+                                      LOGGING_DISABLED);
+  std::vector<storage::TupleSlot> read_order;
+  for (uint32_t i = 0; i < num_reads_; ++i) {
+    read_order.emplace_back(table_->Insert(&txn, *redo_, storage::layout_version_t(0)));
+  }
+
+  // create new schema
+  catalog::col_oid_t col_oid(column_num_);
+  std::vector<catalog::Schema::Column> new_columns(columns_.begin(), columns_.end() - 1);
+  new_columns.emplace_back("", type::TypeId::BIGINT, false, col_oid);
+  catalog::Schema new_schema(new_columns, storage::layout_version_t(1));
+  table_->UpdateSchema(new_schema);
+
+  // update the vector of ProjectedRow buffers for concurrent reads
+  for (uint32_t i = 0; i < num_threads_; ++i) delete[] read_buffers_[i];
+  read_buffers_.clear();
+  reads_.clear();
+  for (uint32_t i = 0; i < num_threads_; ++i) {
+    // Create read buffer
+    byte *read_buffer = common::AllocationUtil::AllocateAligned(initializer_->ProjectedRowSize());
+    storage::ProjectedRow *read = initializer_->InitializeRow(read_buffer);
+    read_buffers_.emplace_back(read_buffer);
+    reads_.emplace_back(read);
+  }
+
+  // Generate random read orders and read buffer for each thread
+  std::shuffle(read_order.begin(), read_order.end(), generator_);
+  std::uniform_int_distribution<uint32_t> rand_start(0, static_cast<uint32_t>(read_order.size() - 1));
+  std::vector<uint32_t> rand_read_offsets;
+  for (uint32_t i = 0; i < num_threads_; ++i) {
+    // Create random reads
+    rand_read_offsets.emplace_back(rand_start(generator_));
+  }
+  // NOLINTNEXTLINE
+  for (auto _ : state) {
+    auto workload = [&](uint32_t id) {
+      // We can use dummy timestamps here since we're not invoking concurrency control
+      transaction::TransactionContext txn(transaction::timestamp_t(0), transaction::timestamp_t(0), &buffer_pool_,
+                                          LOGGING_DISABLED);
+      for (uint32_t i = 0; i < num_inserts_ / num_threads_; ++i) {
+        table_->Select(&txn, read_order[(rand_read_offsets[id] + i) % read_order.size()], reads_[id], *map_,
+                       storage::layout_version_t(1));
+      }
+    };
+    common::WorkerPool thread_pool(num_threads_, {});
+    MultiThreadTestUtil::RunThreadsUntilFinish(&thread_pool, num_threads_, workload);
+  }
+
   state.SetItemsProcessed(state.iterations() * num_inserts_);
 }
 
@@ -353,5 +465,9 @@ BENCHMARK_REGISTER_F(SqlTableBenchmark, SingleVersionRandomRead)->Unit(benchmark
 BENCHMARK_REGISTER_F(SqlTableBenchmark, MultiVersionMismatchRandomRead)->Unit(benchmark::kMillisecond);
 
 BENCHMARK_REGISTER_F(SqlTableBenchmark, MultiVersionMatchRandomRead)->Unit(benchmark::kMillisecond);
+
+BENCHMARK_REGISTER_F(SqlTableBenchmark, ConcurrentSingleVersionRead)->Unit(benchmark::kMillisecond)->UseRealTime();
+
+BENCHMARK_REGISTER_F(SqlTableBenchmark, ConcurrentMultiVersionRead)->Unit(benchmark::kMillisecond)->UseRealTime();
 
 }  // namespace terrier
