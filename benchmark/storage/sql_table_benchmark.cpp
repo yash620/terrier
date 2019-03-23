@@ -16,7 +16,7 @@
 namespace terrier {
 
 // This benchmark simulates a key-value store inserting a large number of tuples. This provides a good baseline and
-// reference to other fast data structures (indexes) to compare against. We are interested in the DataTable's raw
+// reference to other fast data structures (indexes) to compare against. We are interested in the SqlTable's raw
 // performance, so the tuple's contents are intentionally left garbage and we don't verify correctness. That's the job
 // of the Google Tests.
 
@@ -30,7 +30,7 @@ class SqlTableBenchmark : public benchmark::Fixture {
     for (uint32_t i = 0; i < column_num_; i++) {
       columns_.emplace_back("", type::TypeId::BIGINT, false, col_oid++);
     }
-    schema_ = new catalog::Schema(columns_);
+    schema_ = new catalog::Schema(columns_, storage::layout_version_t(0));
     table_ = new storage::SqlTable(&block_store_, *schema_, catalog::table_oid_t(0));
 
     //
@@ -57,6 +57,7 @@ class SqlTableBenchmark : public benchmark::Fixture {
     delete initializer_;
     delete map_;
     delete table_;
+    columns_.clear();
   }
 
   // Sql Table
@@ -78,7 +79,7 @@ class SqlTableBenchmark : public benchmark::Fixture {
   storage::RecordBufferSegmentPool buffer_pool_{num_inserts_, buffer_pool_reuse_limit_};
 
   // Schema
-  const uint32_t column_num_ = 3;
+  const uint32_t column_num_ = 2;
   std::vector<catalog::Schema::Column> columns_;
   catalog::Schema *schema_ = nullptr;
 
@@ -91,7 +92,7 @@ class SqlTableBenchmark : public benchmark::Fixture {
   storage::ProjectedRow *read_;
 };
 
-// Insert the num_inserts_ of tuples into a DataTable in a single thread
+// Insert the num_inserts_ of tuples into a SqlTable in a single thread
 // NOLINTNEXTLINE
 BENCHMARK_DEFINE_F(SqlTableBenchmark, SimpleInsert)(benchmark::State &state) {
   // NOLINTNEXTLINE
@@ -107,9 +108,54 @@ BENCHMARK_DEFINE_F(SqlTableBenchmark, SimpleInsert)(benchmark::State &state) {
   state.SetItemsProcessed(state.iterations() * num_inserts_);
 }
 
-// Insert the num_inserts_ of tuples into a DataTable in a single thread
+// Insert the num_inserts_ of tuples into a SqlTable concurrently
 // NOLINTNEXTLINE
-BENCHMARK_DEFINE_F(SqlTableBenchmark, MultiVersionSequentialRead)(benchmark::State &state) {
+BENCHMARK_DEFINE_F(SqlTableBenchmark, ConcurrentInsert)(benchmark::State &state) {
+  // NOLINTNEXTLINE
+  std::vector<uint32_t> succ_count;
+  for (auto _ : state) {
+    auto workload = [&](uint32_t id) {
+      // We can use dummy timestamps here since we're not invoking concurrency control
+      transaction::TransactionContext txn(transaction::timestamp_t(0), transaction::timestamp_t(0), &buffer_pool_,
+                                          LOGGING_DISABLED);
+      for (uint32_t i = 0; i < num_inserts_ / num_threads_; ++i) {
+        table_->Insert(&txn, *redo_, storage::layout_version_t(0));
+      }
+    };
+    common::WorkerPool thread_pool(num_threads_, {});
+    MultiThreadTestUtil::RunThreadsUntilFinish(&thread_pool, num_threads_, workload);
+  }
+
+  state.SetItemsProcessed(state.iterations() * num_inserts_);
+}
+
+// Read the num_reads_ of tuples in a sequential order from a SqlTable in a single thread
+// The SqlTable has only one schema version
+// NOLINTNEXTLINE
+BENCHMARK_DEFINE_F(SqlTableBenchmark, SingleVersionSequentialRead)(benchmark::State &state) {
+  // Populate read_table_ by inserting tuples
+  // We can use dummy timestamps here since we're not invoking concurrency control
+  transaction::TransactionContext txn(transaction::timestamp_t(0), transaction::timestamp_t(0), &buffer_pool_,
+                                      LOGGING_DISABLED);
+  std::vector<storage::TupleSlot> read_order;
+  for (uint32_t i = 0; i < num_reads_; ++i) {
+    read_order.emplace_back(table_->Insert(&txn, *redo_, storage::layout_version_t(0)));
+  }
+
+  // NOLINTNEXTLINE
+  for (auto _ : state) {
+    for (uint32_t i = 0; i < num_inserts_; ++i) {
+      table_->Select(&txn, read_order[i], read_, *map_, storage::layout_version_t(0));
+    }
+  }
+
+  state.SetItemsProcessed(state.iterations() * num_inserts_);
+}
+
+// Read the num_reads_ of tuples in a sequential order from a SqlTable in a single thread
+// The SqlTable has multiple schema versions and the read version mismatches the one stored in the storage layer
+// NOLINTNEXTLINE
+BENCHMARK_DEFINE_F(SqlTableBenchmark, MultiVersionMismatchSequentialRead)(benchmark::State &state) {
   // Populate read_table_ by inserting tuples
   // We can use dummy timestamps here since we're not invoking concurrency control
   transaction::TransactionContext txn(transaction::timestamp_t(0), transaction::timestamp_t(0), &buffer_pool_,
@@ -141,29 +187,8 @@ BENCHMARK_DEFINE_F(SqlTableBenchmark, MultiVersionSequentialRead)(benchmark::Sta
   state.SetItemsProcessed(state.iterations() * num_inserts_);
 }
 
-// Insert the num_inserts_ of tuples into a DataTable in a single thread
-// NOLINTNEXTLINE
-BENCHMARK_DEFINE_F(SqlTableBenchmark, SingleVersionSequentialRead)(benchmark::State &state) {
-  // Populate read_table_ by inserting tuples
-  // We can use dummy timestamps here since we're not invoking concurrency control
-  transaction::TransactionContext txn(transaction::timestamp_t(0), transaction::timestamp_t(0), &buffer_pool_,
-                                      LOGGING_DISABLED);
-  std::vector<storage::TupleSlot> read_order;
-  for (uint32_t i = 0; i < num_reads_; ++i) {
-    read_order.emplace_back(table_->Insert(&txn, *redo_, storage::layout_version_t(0)));
-  }
-
-  // NOLINTNEXTLINE
-  for (auto _ : state) {
-    for (uint32_t i = 0; i < num_inserts_; ++i) {
-      table_->Select(&txn, read_order[i], read_, *map_, storage::layout_version_t(0));
-    }
-  }
-
-  state.SetItemsProcessed(state.iterations() * num_inserts_);
-}
-
-// Insert the num_inserts_ of tuples into a DataTable in a single thread
+// Read the num_reads_ of tuples in a random order from a SqlTable in a single thread
+// The SqlTable has only one schema version
 // NOLINTNEXTLINE
 BENCHMARK_DEFINE_F(SqlTableBenchmark, SingleVersionRandomRead)(benchmark::State &state) {
   // Populate read_table_ by inserting tuples
@@ -187,9 +212,10 @@ BENCHMARK_DEFINE_F(SqlTableBenchmark, SingleVersionRandomRead)(benchmark::State 
   state.SetItemsProcessed(state.iterations() * num_inserts_);
 }
 
-// Insert the num_inserts_ of tuples into a DataTable in a single thread
+// Read the num_reads_ of tuples in a random order from a SqlTable in a single thread
+// The SqlTable has multiple schema versions and the read version mismatches the one stored in the storage layer
 // NOLINTNEXTLINE
-BENCHMARK_DEFINE_F(SqlTableBenchmark, MultiVersionRandomRead)(benchmark::State &state) {
+BENCHMARK_DEFINE_F(SqlTableBenchmark, MultiVersionMismatchRandomRead)(benchmark::State &state) {
   // Populate read_table_ by inserting tuples
   // We can use dummy timestamps here since we're not invoking concurrency control
   transaction::TransactionContext txn(transaction::timestamp_t(0), transaction::timestamp_t(0), &buffer_pool_,
@@ -226,11 +252,13 @@ BENCHMARK_DEFINE_F(SqlTableBenchmark, MultiVersionRandomRead)(benchmark::State &
 
 BENCHMARK_REGISTER_F(SqlTableBenchmark, SimpleInsert)->Unit(benchmark::kMillisecond);
 
+BENCHMARK_REGISTER_F(SqlTableBenchmark, ConcurrentInsert)->Unit(benchmark::kMillisecond)->UseRealTime();
+
 BENCHMARK_REGISTER_F(SqlTableBenchmark, SingleVersionSequentialRead)->Unit(benchmark::kMillisecond);
 
-BENCHMARK_REGISTER_F(SqlTableBenchmark, MultiVersionSequentialRead)->Unit(benchmark::kMillisecond);
+BENCHMARK_REGISTER_F(SqlTableBenchmark, MultiVersionMismatchSequentialRead)->Unit(benchmark::kMillisecond);
 
 BENCHMARK_REGISTER_F(SqlTableBenchmark, SingleVersionRandomRead)->Unit(benchmark::kMillisecond);
 
-BENCHMARK_REGISTER_F(SqlTableBenchmark, MultiVersionRandomRead)->Unit(benchmark::kMillisecond);
+BENCHMARK_REGISTER_F(SqlTableBenchmark, MultiVersionMismatchRandomRead)->Unit(benchmark::kMillisecond);
 }  // namespace terrier
