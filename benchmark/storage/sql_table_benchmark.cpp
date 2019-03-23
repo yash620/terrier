@@ -112,7 +112,6 @@ BENCHMARK_DEFINE_F(SqlTableBenchmark, SimpleInsert)(benchmark::State &state) {
 // NOLINTNEXTLINE
 BENCHMARK_DEFINE_F(SqlTableBenchmark, ConcurrentInsert)(benchmark::State &state) {
   // NOLINTNEXTLINE
-  std::vector<uint32_t> succ_count;
   for (auto _ : state) {
     auto workload = [&](uint32_t id) {
       // We can use dummy timestamps here since we're not invoking concurrency control
@@ -172,8 +171,8 @@ BENCHMARK_DEFINE_F(SqlTableBenchmark, MultiVersionMismatchSequentialRead)(benchm
   table_->UpdateSchema(new_schame);
 
   // create a new read buffer
-  std::vector<catalog::col_oid_t> all_col_oids;
-  for (auto &col : new_columns) all_col_oids.emplace_back(col.GetOid());
+  std::vector<catalog::col_oid_t> all_col_oids(new_columns.size());
+  for (size_t i = 0; i < new_columns.size(); i++) all_col_oids[i] = new_columns[i].GetOid();
   auto pair = table_->InitializerForProjectedRow(all_col_oids, storage::layout_version_t(1));
   byte *buffer = common::AllocationUtil::AllocateAligned(pair.first.ProjectedRowSize());
   storage::ProjectedRow *read_pr = pair.first.InitializeRow(buffer);
@@ -232,8 +231,8 @@ BENCHMARK_DEFINE_F(SqlTableBenchmark, MultiVersionMismatchRandomRead)(benchmark:
   table_->UpdateSchema(new_schame);
 
   // create a new read buffer
-  std::vector<catalog::col_oid_t> all_col_oids;
-  for (auto &col : new_columns) all_col_oids.emplace_back(col.GetOid());
+  std::vector<catalog::col_oid_t> all_col_oids(new_columns.size());
+  for (size_t i = 0; i < new_columns.size(); i++) all_col_oids[i] = new_columns[i].GetOid();
   auto pair = table_->InitializerForProjectedRow(all_col_oids, storage::layout_version_t(1));
   byte *buffer = common::AllocationUtil::AllocateAligned(pair.first.ProjectedRowSize());
   storage::ProjectedRow *read_pr = pair.first.InitializeRow(buffer);
