@@ -582,11 +582,9 @@ BENCHMARK_DEFINE_F(SqlTableBenchmark, SingleVersionScan)(benchmark::State &state
 
   // NOLINTNEXTLINE
   for (auto _ : state) {
-    uint32_t tuples_read = 0;
     auto start_pos = table_->begin(storage::layout_version_t(0));
-    while (tuples_read != num_inserts_) {
+    while (start_pos != table_->end()) {
       table_->Scan(&txn, &start_pos, scan_pr, pair.second, storage::layout_version_t(0));
-      tuples_read += scan_pr->NumTuples();
       scan_pr = pair.first.Initialize(buffer);
     }
   }
@@ -635,11 +633,9 @@ BENCHMARK_DEFINE_F(SqlTableBenchmark, MultiVersionScan)(benchmark::State &state)
 
   // NOLINTNEXTLINE
   for (auto _ : state) {
-    uint32_t tuples_read = 0;
     auto start_pos = table_->begin(storage::layout_version_t(1));
-    while (tuples_read != num_inserts_) {
+    while (start_pos != table_->end()) {
       table_->Scan(&txn, &start_pos, scan_pr, col_pair.second, storage::layout_version_t(1));
-      tuples_read += scan_pr->NumTuples();
       scan_pr = col_pair.first.Initialize(buffer);
     }
   }
