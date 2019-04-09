@@ -1,5 +1,4 @@
 #pragma once
-#include <storage/sql_table.h>
 #include <random>
 #include <vector>
 #include "catalog/schema.h"
