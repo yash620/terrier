@@ -86,6 +86,7 @@ class SqlTableBenchmark : public benchmark::Fixture {
   const uint32_t num_updates_ = 10000000;
   const uint32_t num_threads_ = 4;
   const uint64_t buffer_pool_reuse_limit_ = 10000000;
+  const uint32_t scan_buffer_size_ = 1000;  // maximum number of tuples in a buffer
 
   // Test infrastructure
   std::default_random_engine generator_;
@@ -560,6 +561,39 @@ BENCHMARK_DEFINE_F(SqlTableBenchmark, MultiVersionMismatchUpdate)(benchmark::Sta
   state.SetItemsProcessed(state.iterations() * num_updates_);
 }
 
+// Scan the num_insert_ of tuples from a SqlTable in a single thread
+// The SqlTable has only one schema version
+// NOLINTNEXTLINE
+BENCHMARK_DEFINE_F(SqlTableBenchmark, SingleVersionScan)(benchmark::State &state) {
+  // Populate read_table_ by inserting tuples
+  // We can use dummy timestamps here since we're not invoking concurrency control
+  transaction::TransactionContext txn(transaction::timestamp_t(0), transaction::timestamp_t(0), &buffer_pool_,
+                                      LOGGING_DISABLED);
+  for (uint32_t i = 0; i < num_inserts_; ++i) {
+    table_->Insert(&txn, *redo_, storage::layout_version_t(0));
+  }
+
+  // create a scan buffer
+  std::vector<catalog::col_oid_t> all_col_oids;
+  for (auto &col : schema_->GetColumns()) all_col_oids.emplace_back(col.GetOid());
+  auto pair = table_->InitializerForProjectedColumns(all_col_oids, scan_buffer_size_, storage::layout_version_t(0));
+  byte *buffer = common::AllocationUtil::AllocateAligned(pair.first.ProjectedColumnsSize());
+  storage::ProjectedColumns *scan_pr = pair.first.Initialize(buffer);
+
+  // NOLINTNEXTLINE
+  for (auto _ : state) {
+    uint32_t tuples_read = 0;
+    auto start_pos = table_->begin(storage::layout_version_t(0));
+    while (tuples_read != num_inserts_) {
+      table_->Scan(&txn, &start_pos, scan_pr, pair.second, storage::layout_version_t(0));
+      tuples_read += scan_pr->NumTuples();
+      scan_pr = pair.first.Initialize(buffer);
+    }
+  }
+  delete[] buffer;
+  state.SetItemsProcessed(state.iterations() * num_inserts_);
+}
+
 BENCHMARK_REGISTER_F(SqlTableBenchmark, SimpleInsert)->Unit(benchmark::kMillisecond);
 
 BENCHMARK_REGISTER_F(SqlTableBenchmark, ConcurrentInsert)->Unit(benchmark::kMillisecond)->UseRealTime();
@@ -585,5 +619,7 @@ BENCHMARK_REGISTER_F(SqlTableBenchmark, SingleVersionUpdate)->Unit(benchmark::kM
 BENCHMARK_REGISTER_F(SqlTableBenchmark, MultiVersionMatchUpdate)->Unit(benchmark::kMillisecond);
 
 BENCHMARK_REGISTER_F(SqlTableBenchmark, MultiVersionMismatchUpdate)->Unit(benchmark::kMillisecond);
+
+BENCHMARK_REGISTER_F(SqlTableBenchmark, SingleVersionScan)->Unit(benchmark::kMillisecond);
 
 }  // namespace terrier
