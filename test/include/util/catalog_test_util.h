@@ -3,6 +3,7 @@
 #include <vector>
 #include "catalog/schema.h"
 #include "common/strong_typedef.h"
+#include "storage/sql_table.h"
 #include "type/type_id.h"
 #include "util/multithread_test_util.h"
 #include "util/random_test_util.h"
