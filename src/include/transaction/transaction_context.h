@@ -9,6 +9,8 @@
 #include "storage/undo_record.h"
 #include "storage/write_ahead_log/log_record.h"
 #include "transaction/transaction_util.h"
+#include "transaction/transaction_manager.h"
+#include "transaction/transaction_constraint.h"
 
 namespace terrier::storage {
 class GarbageCollector;
@@ -143,6 +145,8 @@ class TransactionContext {
    * @return the transaction manager
    */
   TransactionManager *GetTransactionManager() { return txn_mgr_; }
+
+  TransactionConstraint *InstallTransaction(constraint_fn fn){ return txn_mgr_->InstallConstraint(this, fn); }
 
  private:
   friend class storage::GarbageCollector;

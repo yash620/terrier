@@ -5,11 +5,13 @@
 #include "common/shared_latch.h"
 #include "common/spin_latch.h"
 #include "common/strong_typedef.h"
+#include "common/container/concurrent_vector.h"
 #include "storage/data_table.h"
 #include "storage/record_buffer.h"
 #include "storage/undo_record.h"
 #include "storage/write_ahead_log/log_manager.h"
 #include "transaction/transaction_context.h"
+#include "transaction/transaction_constraint.h"
 #include "transaction/transaction_defs.h"
 
 namespace terrier::transaction {
@@ -92,6 +94,14 @@ class TransactionManager {
    */
   std::queue<std::pair<timestamp_t, Action>> DeferredActionsForGC();
 
+  /**
+   * Installs a constraint so that future committing transactions will verify with it
+   * @param txn context of transaction installing this constraint
+   * @param fn the function ran to verify the constraint
+   * @return pointer to the installed TransactionConstraint
+   */
+  TransactionConstraint *InstallConstraint(TransactionContext * txn, constraint_fn fn);
+
  private:
   storage::RecordBufferSegmentPool *buffer_pool_;
   // TODO(Tianyu): Timestamp generation needs to be more efficient (batches)
@@ -111,6 +121,8 @@ class TransactionManager {
 
   std::queue<std::pair<timestamp_t, Action>> deferred_actions_;
   mutable common::SpinLatch deferred_actions_latch_;
+
+  common::ConcurrentVector<TransactionConstraint> constraints_;
 
   timestamp_t ReadOnlyCommitCriticalSection(TransactionContext *txn, transaction::callback_fn callback,
                                             void *callback_arg);

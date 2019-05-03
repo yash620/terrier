@@ -268,4 +268,10 @@ void TransactionManager::DeallocateInsertedTupleIfVarlen(TransactionContext *txn
     }
   }
 }
+
+TransactionConstraint *TransactionManager::InstallConstraint(TransactionContext *txn,
+                                           constraint_fn fn) {
+  auto iter = constraints_.EmplaceBack(TransactionConstraint(txn->StartTime(), fn));
+  return &(*iter);
+}
 }  // namespace terrier::transaction
