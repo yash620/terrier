@@ -102,6 +102,13 @@ class TransactionManager {
    */
   TransactionConstraint *InstallConstraint(TransactionContext * txn, constraint_fn fn);
 
+  /**
+   * Notifies the transaction manager that this transaction should be aborted because it's constraint was
+   * violated
+   * @param txn_id pointer to the id id of the transaction to be aborted
+   */
+  void ViolateTransactionConstraint(std::atomic<timestamp_t> *txn_id);
+
  private:
   storage::RecordBufferSegmentPool *buffer_pool_;
   // TODO(Tianyu): Timestamp generation needs to be more efficient (batches)
@@ -120,9 +127,14 @@ class TransactionManager {
   storage::LogManager *const log_manager_;
 
   std::queue<std::pair<timestamp_t, Action>> deferred_actions_;
+
+  std::unordered_set<std::atomic<timestamp_t>> txns_to_abort_; // map of txns that should aborted due to violating constraints
+
   mutable common::SpinLatch deferred_actions_latch_;
 
   common::ConcurrentVector<TransactionConstraint> constraints_;
+
+  bool CanCommit(TransactionContext *const txn);
 
   timestamp_t ReadOnlyCommitCriticalSection(TransactionContext *txn, transaction::callback_fn callback,
                                             void *callback_arg);

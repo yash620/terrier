@@ -55,9 +55,27 @@ timestamp_t TransactionManager::ReadOnlyCommitCriticalSection(TransactionContext
   return commit_time;
 }
 
+bool TransactionManager::CanCommit(TransactionContext *const txn){
+  if(txns_to_abort_.count(txn->TxnId()){
+    return false;
+  } else {
+    for(TransactionConstraint constraint : constraints_){
+      if(constraint.CheckConstraint(txn) == false){
+        return false;
+      }
+    }
+
+    return true;
+  }
+}
+
 timestamp_t TransactionManager::UpdatingCommitCriticalSection(TransactionContext *const txn, const callback_fn callback,
                                                               void *const callback_arg) {
   common::SharedLatch::ScopedExclusiveLatch guard(&commit_latch_);
+
+  if(CanCommit(txn) == false){
+    //TODO (Yashwanth) add in logic for aborting here
+  }
   const timestamp_t commit_time = time_++;
 
   // TODO(Tianyu):
@@ -84,6 +102,7 @@ timestamp_t TransactionManager::UpdatingCommitCriticalSection(TransactionContext
   return commit_time;
 }
 
+//TODO (Yashwanth) need to identify some how when commit fails
 timestamp_t TransactionManager::Commit(TransactionContext *const txn, transaction::callback_fn callback,
                                        void *callback_arg) {
   const timestamp_t result = txn->undo_buffer_.Empty() ? ReadOnlyCommitCriticalSection(txn, callback, callback_arg)
@@ -271,7 +290,9 @@ void TransactionManager::DeallocateInsertedTupleIfVarlen(TransactionContext *txn
 
 TransactionConstraint *TransactionManager::InstallConstraint(TransactionContext *txn,
                                            constraint_fn fn) {
-  auto iter = constraints_.EmplaceBack(TransactionConstraint(txn->StartTime(), fn));
+  auto iter = constraints_.EmplaceBack(TransactionConstraint(txn->StartTime(), &(txn->TxnId()), fn, this));
   return &(*iter);
 }
+
+void TransactionManager::ViolateTransactionConstraint(std::atomic<timestamp_t> *txn_id){ txns_to_abort_.emplace(*txn_id); };
 }  // namespace terrier::transaction

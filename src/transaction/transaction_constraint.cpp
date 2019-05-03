@@ -1,4 +1,5 @@
 #include "transaction/transaction_constraint.h"
+#include "transaction/transaction_manager.h"
 
 namespace terrier::transaction {
 
@@ -11,13 +12,15 @@ bool TransactionConstraint::CheckConstraint(TransactionContext * txn){
     return true;
   }
 
-  if(violated || verify_fn_()) {
+  //if constraint already violated then
+  if(violated_ || verify_fn_()) {
     return true;
   } else{
-    if(enforcing){
+    if(enforcing_){
       return false;
     } else {
-      violated = true;
+      violated_ = true;
+      txn_manager_->ViolateTransactionConstraint(InstallingTxnId());
       return true;
     }
   }
