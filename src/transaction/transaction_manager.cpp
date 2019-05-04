@@ -56,26 +56,33 @@ timestamp_t TransactionManager::ReadOnlyCommitCriticalSection(TransactionContext
 }
 
 bool TransactionManager::CanCommit(TransactionContext *const txn){
-  if(txns_to_abort_.count(txn->TxnId()){
-    return false;
-  } else {
-    for(TransactionConstraint constraint : constraints_){
-      if(constraint.CheckConstraint(txn) == false){
+  auto iter = constraints_.Begin();
+  while(iter != constraints_.End()){
+    TransactionConstraint &constraint = *iter;
+    if(constraint.InstallingTransactionId() == txn->TxnId().load()){
+      if(constraint.Violated()) {
         return false;
       }
+    } else if(!constraint.CheckConstraint(txn)){
+      return false;
     }
-
-    return true;
+    iter++;
   }
+  return true;
 }
 
 timestamp_t TransactionManager::UpdatingCommitCriticalSection(TransactionContext *const txn, const callback_fn callback,
                                                               void *const callback_arg) {
   common::SharedLatch::ScopedExclusiveLatch guard(&commit_latch_);
 
-  if(CanCommit(txn) == false){
-    //TODO (Yashwanth) add in logic for aborting here
+  if(!CanCommit(txn)){
+    // TODO(Yashwanth):
+    // Determine how to notify if transaction is aborted, current assumption seems to be if Commit is
+    // called then transaction can't be aborted
+    Abort(txn);
+    return timestamp_t(0);
   }
+
   const timestamp_t commit_time = time_++;
 
   // TODO(Tianyu):
@@ -102,11 +109,17 @@ timestamp_t TransactionManager::UpdatingCommitCriticalSection(TransactionContext
   return commit_time;
 }
 
-//TODO (Yashwanth) need to identify some how when commit fails
+//TODO (Yashwanth) need to identify some how when commit fails, use most significant bit of commit ts as sentinel value
 timestamp_t TransactionManager::Commit(TransactionContext *const txn, transaction::callback_fn callback,
                                        void *callback_arg) {
   const timestamp_t result = txn->undo_buffer_.Empty() ? ReadOnlyCommitCriticalSection(txn, callback, callback_arg)
                                                        : UpdatingCommitCriticalSection(txn, callback, callback_arg);
+
+  // If transaction was aborted in critical section then return
+  if(result == timestamp_t(0)){
+    return result;
+  }
+
   while (!txn->commit_actions_.empty()) {
     txn->commit_actions_.front()();
     txn->commit_actions_.pop_front();
@@ -290,9 +303,8 @@ void TransactionManager::DeallocateInsertedTupleIfVarlen(TransactionContext *txn
 
 TransactionConstraint *TransactionManager::InstallConstraint(TransactionContext *txn,
                                            constraint_fn fn) {
-  auto iter = constraints_.EmplaceBack(TransactionConstraint(txn->StartTime(), &(txn->TxnId()), fn, this));
+  auto iter = constraints_.EmplaceBack(txn->StartTime(), txn->TxnId().load(), fn);
   return &(*iter);
 }
 
-void TransactionManager::ViolateTransactionConstraint(std::atomic<timestamp_t> *txn_id){ txns_to_abort_.emplace(*txn_id); };
 }  // namespace terrier::transaction

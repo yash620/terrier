@@ -11,16 +11,14 @@ bool TransactionConstraint::CheckConstraint(TransactionContext * txn){
   if(txn->StartTime() < install_time_){
     return true;
   }
-
-  //if constraint already violated then
-  if(violated_ || verify_fn_()) {
+  //if constraint already violated or pass check then can commit
+  if(violated_.load() || verify_fn_()) {
     return true;
   } else{
-    if(enforcing_){
+    if(enforcing_.load()){ //if constraint enforcing and fail check then can't commit
       return false;
     } else {
-      violated_ = true;
-      txn_manager_->ViolateTransactionConstraint(InstallingTxnId());
+      violated_.store(true); //if not enforcing and failed check, can commit but notify constraint to be violated
       return true;
     }
   }

@@ -298,8 +298,6 @@ template ProjectionMap SqlTable::ProjectionMapForInitializer<ProjectedColumnsIni
 template ProjectionMap SqlTable::ProjectionMapForInitializer<ProjectedRowInitializer>(
     const ProjectedRowInitializer &initializer, layout_version_t version) const;
 
-// TODO(Yashwanth): don't copy the entire header, no need for template only take in ColumnIds() and then just modify
-// that when resetting header only have memc py ColumnIds()
 template <class RowType>
 void SqlTable::ModifyProjectionHeaderForVersion(RowType *out_buffer, const DataTableVersion &curr_dt_version,
                                                 const DataTableVersion &old_dt_version,

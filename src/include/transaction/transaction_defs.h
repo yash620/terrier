@@ -19,7 +19,7 @@ class TransactionManager;
 // bottleneck.
 using TransactionQueue = std::forward_list<transaction::TransactionContext *>;
 using callback_fn = void (*)(void *);
-using constraint_fn = bool (*) (); //TODO(Yashwanth) look into what parameters this should take.
 
+using constraint_fn = std::function<bool()>; // TODO(Yashwanth): look into what parameters this should take.
 using Action = std::function<void()>;
 }  // namespace terrier::transaction
