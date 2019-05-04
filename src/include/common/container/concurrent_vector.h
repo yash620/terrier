@@ -90,8 +90,10 @@ class ConcurrentVector {
    * @param item element to be added.
    * @return an iterator pointing to the new element.
    */
-  template<typename... Args>
-  Iterator EmplaceBack(Args &&... argsm) { return Iterator(vector_.emplace_back(argsm...)); }
+  template <typename... Args>
+  Iterator EmplaceBack(Args &&... argsm) {
+    return Iterator(vector_.emplace_back(argsm...));
+  }
 
   /**
    * Returns a reference to the element at position n in the vector.

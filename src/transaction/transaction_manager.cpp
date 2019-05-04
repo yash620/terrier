@@ -55,15 +55,15 @@ timestamp_t TransactionManager::ReadOnlyCommitCriticalSection(TransactionContext
   return commit_time;
 }
 
-bool TransactionManager::CanCommit(TransactionContext *const txn){
+bool TransactionManager::CanCommit(TransactionContext *txn) {
   auto iter = constraints_.Begin();
-  while(iter != constraints_.End()){
+  while (iter != constraints_.End()) {
     TransactionConstraint &constraint = *iter;
-    if(constraint.InstallingTransactionId() == txn->TxnId().load()){
-      if(constraint.Violated()) {
+    if (constraint.InstallingTransactionId() == txn->TxnId().load()) {
+      if (constraint.Violated()) {
         return false;
       }
-    } else if(!constraint.CheckConstraint(txn)){
+    } else if (!constraint.CheckConstraint(txn)) {
       return false;
     }
     iter++;
@@ -75,7 +75,7 @@ timestamp_t TransactionManager::UpdatingCommitCriticalSection(TransactionContext
                                                               void *const callback_arg) {
   common::SharedLatch::ScopedExclusiveLatch guard(&commit_latch_);
 
-  if(!CanCommit(txn)){
+  if (!CanCommit(txn)) {
     // TODO(Yashwanth):
     // Determine how to notify if transaction is aborted, current assumption seems to be if Commit is
     // called then transaction can't be aborted
@@ -109,14 +109,14 @@ timestamp_t TransactionManager::UpdatingCommitCriticalSection(TransactionContext
   return commit_time;
 }
 
-//TODO (Yashwanth) need to identify some how when commit fails, use most significant bit of commit ts as sentinel value
+// TODO (Yashwanth) need to identify some how when commit fails, use most significant bit of commit ts as sentinel value
 timestamp_t TransactionManager::Commit(TransactionContext *const txn, transaction::callback_fn callback,
                                        void *callback_arg) {
   const timestamp_t result = txn->undo_buffer_.Empty() ? ReadOnlyCommitCriticalSection(txn, callback, callback_arg)
                                                        : UpdatingCommitCriticalSection(txn, callback, callback_arg);
 
   // If transaction was aborted in critical section then return
-  if(result == timestamp_t(0)){
+  if (result == timestamp_t(0)) {
     return result;
   }
 
@@ -301,8 +301,7 @@ void TransactionManager::DeallocateInsertedTupleIfVarlen(TransactionContext *txn
   }
 }
 
-TransactionConstraint *TransactionManager::InstallConstraint(TransactionContext *txn,
-                                           constraint_fn fn) {
+TransactionConstraint *TransactionManager::InstallConstraint(TransactionContext *txn, constraint_fn fn) {
   auto iter = constraints_.EmplaceBack(txn->StartTime(), txn->TxnId().load(), fn);
   return &(*iter);
 }

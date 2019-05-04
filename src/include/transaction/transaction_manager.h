@@ -2,16 +2,16 @@
 #include <queue>
 #include <unordered_set>
 #include <utility>
+#include "common/container/concurrent_vector.h"
 #include "common/shared_latch.h"
 #include "common/spin_latch.h"
 #include "common/strong_typedef.h"
-#include "common/container/concurrent_vector.h"
 #include "storage/data_table.h"
 #include "storage/record_buffer.h"
 #include "storage/undo_record.h"
 #include "storage/write_ahead_log/log_manager.h"
-#include "transaction/transaction_context.h"
 #include "transaction/transaction_constraint.h"
+#include "transaction/transaction_context.h"
 #include "transaction/transaction_defs.h"
 
 namespace terrier::transaction {
@@ -100,7 +100,7 @@ class TransactionManager {
    * @param fn the function ran to verify the constraint
    * @return pointer to the installed TransactionConstraint
    */
-  TransactionConstraint *InstallConstraint(TransactionContext * txn, constraint_fn fn);
+  TransactionConstraint *InstallConstraint(TransactionContext *txn, constraint_fn fn);
 
  private:
   storage::RecordBufferSegmentPool *buffer_pool_;
@@ -125,7 +125,7 @@ class TransactionManager {
 
   common::ConcurrentVector<TransactionConstraint> constraints_;
 
-  bool CanCommit(TransactionContext *const txn);
+  bool CanCommit(TransactionContext *txn);
 
   timestamp_t ReadOnlyCommitCriticalSection(TransactionContext *txn, transaction::callback_fn callback,
                                             void *callback_arg);
