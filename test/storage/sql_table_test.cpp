@@ -845,7 +845,8 @@ TEST_F(SqlTableTests, BasicDefaultValuesTest) {
   // Explicitly set the layout version number
   table.version_ = storage::layout_version_t(1);
   int col2_default = 42;
-  table.AddColumn(txn, "col2", type::TypeId::INTEGER, true, catalog::col_oid_t(2), reinterpret_cast<byte *>(&col2_default));
+  table.AddColumn(txn, "col2", type::TypeId::INTEGER, true, catalog::col_oid_t(2),
+                  reinterpret_cast<byte *>(&col2_default));
 
   // Insert (2, NULL, 890)
   table.StartInsertRow();
@@ -864,7 +865,8 @@ TEST_F(SqlTableTests, BasicDefaultValuesTest) {
   // Add another column with a default value and insert a row
   table.version_ = storage::layout_version_t(2);
   int col3_default = 1729;
-  table.AddColumn(txn, "col3", type::TypeId::INTEGER, true, catalog::col_oid_t(3), reinterpret_cast<byte *>(&col3_default));
+  table.AddColumn(txn, "col3", type::TypeId::INTEGER, true, catalog::col_oid_t(3),
+                  reinterpret_cast<byte *>(&col3_default));
 
   // Insert (3, 300, NULL, NULL)
   table.StartInsertRow();

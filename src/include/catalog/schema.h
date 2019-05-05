@@ -42,7 +42,7 @@ class Schema {
           type_(type),
           attr_size_(type::TypeUtil::GetTypeSize(type_)),
           nullable_(nullable),
-          oid_(oid){
+          oid_(oid) {
       TERRIER_ASSERT(attr_size_ == 1 || attr_size_ == 2 || attr_size_ == 4 || attr_size_ == 8,
                      "This constructor is meant for non-VARLEN columns.");
       TERRIER_ASSERT(type_ != type::TypeId::INVALID, "Attribute type cannot be INVALID.");
@@ -68,7 +68,7 @@ class Schema {
           attr_size_(type::TypeUtil::GetTypeSize(type_)),
           max_varlen_size_(max_varlen_size),
           nullable_(nullable),
-          oid_(oid){
+          oid_(oid) {
       // TODO(Sai): How to handle default values for VARLEN?
       TERRIER_ASSERT(attr_size_ == VARLEN_COLUMN, "This constructor is meant for VARLEN columns.");
       TERRIER_ASSERT(type_ != type::TypeId::INVALID, "Attribute type cannot be INVALID.");
