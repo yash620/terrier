@@ -55,11 +55,14 @@ timestamp_t TransactionManager::ReadOnlyCommitCriticalSection(TransactionContext
   return commit_time;
 }
 
-bool TransactionManager::CanCommit(TransactionContext *txn) {
+bool TransactionManager::CheckConstraints(TransactionContext *txn,
+                                          std::vector<TransactionConstraint *> *txn_installed_constraints) {
   auto iter = constraints_.Begin();
   while (iter != constraints_.End()) {
     TransactionConstraint &constraint = *iter;
     if (constraint.InstallingTransactionId() == txn->TxnId().load()) {
+      txn_installed_constraints->push_back(&constraint);
+      constraint.SetEnforcing();
       if (constraint.Violated()) {
         return false;
       }
@@ -74,11 +77,18 @@ bool TransactionManager::CanCommit(TransactionContext *txn) {
 timestamp_t TransactionManager::UpdatingCommitCriticalSection(TransactionContext *const txn, const callback_fn callback,
                                                               void *const callback_arg) {
   common::SharedLatch::ScopedExclusiveLatch guard(&commit_latch_);
+  std::vector<TransactionConstraint *> constraints_installed_by_txn;
 
-  if (!CanCommit(txn)) {
+  if (!CheckConstraints(txn, &constraints_installed_by_txn)) {
     // TODO(Yashwanth):
     // Determine how to notify if transaction is aborted, current assumption seems to be if Commit is
     // called then transaction can't be aborted
+
+    // Since constraint check failed, need to reset all the constraints belonging to this txn
+    for (TransactionConstraint *constraint : constraints_installed_by_txn) {
+      constraint->ResetEnforcing();
+    }
+
     Abort(txn);
     return timestamp_t(0);
   }

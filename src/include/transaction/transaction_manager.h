@@ -125,7 +125,7 @@ class TransactionManager {
 
   common::ConcurrentVector<TransactionConstraint> constraints_;
 
-  bool CanCommit(TransactionContext *txn);
+  bool CheckConstraints(TransactionContext *txn, std::vector<TransactionConstraint *> *txn_installed_constraints);
 
   timestamp_t ReadOnlyCommitCriticalSection(TransactionContext *txn, transaction::callback_fn callback,
                                             void *callback_arg);

@@ -107,13 +107,14 @@ TEST_F(ConstraintTests, ConstraintFailNotEnforcing) {
   tested.table_.Insert(txn0, *insert_tuple_0);
   tested.table_.Insert(txn1, *insert_tuple_1);
 
-  txn_manager.InstallConstraint(txn0, [&]() -> bool { return false; });
+  auto constraint = txn_manager.InstallConstraint(txn0, [&]() -> bool { return false; });
 
   auto result1 = txn_manager.Commit(txn1, TestCallbacks::EmptyCallback, nullptr);
   auto result0 = txn_manager.Commit(txn0, TestCallbacks::EmptyCallback, nullptr);
 
-  ASSERT_EQ(!result0, 0);      // txn_0 should abort
-  ASSERT_TRUE(!result1 != 0);  // txn_1 should commit
+  ASSERT_EQ(!result0, 0);                 // txn_0 should abort
+  ASSERT_TRUE(!result1 != 0);             // txn_1 should commit
+  ASSERT_FALSE(constraint->Enforcing());  // constraint shouldn't be enforcing
 }
 
 // NOLINTNEXTLINE
@@ -135,43 +136,16 @@ TEST_F(ConstraintTests, ConstraintFailEnforcing) {
 
   auto constraint = txn_manager.InstallConstraint(txn0, [&]() -> bool { return false; });
 
-  constraint->SetEnforcing();
-
-  auto result1 = txn_manager.Commit(txn1, TestCallbacks::EmptyCallback, nullptr);
   auto result0 = txn_manager.Commit(txn0, TestCallbacks::EmptyCallback, nullptr);
+  auto result1 = txn_manager.Commit(txn1, TestCallbacks::EmptyCallback, nullptr);
 
+  ASSERT_TRUE(constraint->Enforcing());
   ASSERT_EQ(!result1, 0);      // txn_1 should abort
   ASSERT_TRUE(!result0 != 0);  // txn_0 should commit
 }
 
 // NOLINTNEXTLINE
-TEST_F(ConstraintTests, ConstraintPassingNotEnforcing) {
-  transaction::TransactionManager txn_manager(&buffer_pool_, false, LOGGING_DISABLED);
-
-  MVCCDataTableTestObject tested(&block_store_, max_columns_, &generator_);
-
-  auto *txn0 = txn_manager.BeginTransaction();
-  auto *txn1 = txn_manager.BeginTransaction();
-
-  tested.loose_txns_.push_back(txn0);
-  tested.loose_txns_.push_back(txn1);
-
-  auto *insert_tuple_0 = tested.GenerateRandomTuple(&generator_);
-  auto *insert_tuple_1 = tested.GenerateRandomTuple(&generator_);
-  tested.table_.Insert(txn0, *insert_tuple_0);
-  tested.table_.Insert(txn1, *insert_tuple_1);
-
-  txn_manager.InstallConstraint(txn0, [&]() -> bool { return true; });
-
-  auto result0 = txn_manager.Commit(txn0, TestCallbacks::EmptyCallback, nullptr);
-  auto result1 = txn_manager.Commit(txn1, TestCallbacks::EmptyCallback, nullptr);
-
-  ASSERT_TRUE(!result0 != 0);  // txn_0 should commit
-  ASSERT_TRUE(!result1 != 0);  // txn_1 should commit
-}
-
-// NOLINTNEXTLINE
-TEST_F(ConstraintTests, ConstraintPassingEnforcing) {
+TEST_F(ConstraintTests, ConstraintPassing) {
   transaction::TransactionManager txn_manager(&buffer_pool_, false, LOGGING_DISABLED);
 
   MVCCDataTableTestObject tested(&block_store_, max_columns_, &generator_);
@@ -188,11 +162,11 @@ TEST_F(ConstraintTests, ConstraintPassingEnforcing) {
   tested.table_.Insert(txn1, *insert_tuple_1);
 
   auto constraint = txn_manager.InstallConstraint(txn0, [&]() -> bool { return true; });
-  constraint->SetEnforcing();
 
   auto result0 = txn_manager.Commit(txn0, TestCallbacks::EmptyCallback, nullptr);
   auto result1 = txn_manager.Commit(txn1, TestCallbacks::EmptyCallback, nullptr);
 
+  ASSERT_TRUE(constraint->Enforcing());
   ASSERT_TRUE(!result0 != 0);  // txn_0 should commit
   ASSERT_TRUE(!result1 != 0);  // txn_1 should commit
 }
