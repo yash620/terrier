@@ -941,7 +941,7 @@ TEST_F(SqlTableTests, ModifyDefaultValuesTest) {
 
   // Now set the default value of the column to something
   int col2_default = 42;
-  byte *col2_default_bytes = reinterpret_cast<byte *>(&col2_default);
+  auto *col2_default_bytes = reinterpret_cast<byte *>(&col2_default);
   table.SetColumnDefault(catalog::col_oid_t(2), col2_default_bytes);
 
   // Add a new column - to trigger the UpdateSchema
