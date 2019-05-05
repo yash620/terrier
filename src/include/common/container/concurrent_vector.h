@@ -92,7 +92,7 @@ class ConcurrentVector {
    */
   template <typename... Args>
   Iterator EmplaceBack(Args &&... argsm) {
-    return Iterator(vector_.emplace_back(argsm...));
+    return Iterator(vector_.emplace_back(argsm...));  // NOLINT
   }
 
   /**
