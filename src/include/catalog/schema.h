@@ -50,9 +50,7 @@ class Schema {
 
       // ASSUMPTION: The default_value passed in is of size attr_size_
       // Copy the passed in default value (if exists)
-      if (default_value != nullptr) {
-        SetDefault(default_value);
-      }
+      SetDefault(default_value);
     }
 
     /**
@@ -62,38 +60,20 @@ class Schema {
      * @param max_varlen_size the maximum length of the varlen entry
      * @param nullable true if the column is nullable, false otherwise
      * @param oid internal unique identifier for this column
+     * @param default_value default value for this column. Null by default
      */
     Column(std::string name, const type::TypeId type, const uint16_t max_varlen_size, const bool nullable,
-           const col_oid_t oid)
+           const col_oid_t oid, byte *default_value = nullptr)
         : name_(std::move(name)),
           type_(type),
           attr_size_(type::TypeUtil::GetTypeSize(type_)),
           max_varlen_size_(max_varlen_size),
           nullable_(nullable),
-          oid_(oid) {
+          oid_(oid),
+          default_(nullptr) {
       // TODO(Sai): How to handle default values for VARLEN?
       TERRIER_ASSERT(attr_size_ == VARLEN_COLUMN, "This constructor is meant for VARLEN columns.");
       TERRIER_ASSERT(type_ != type::TypeId::INVALID, "Attribute type cannot be INVALID.");
-    }
-
-    Column(const Column &col)
-        : name_(std::move(col.name_)),
-          type_(col.type_),
-          attr_size_(type::TypeUtil::GetTypeSize(type_)),
-          nullable_(col.nullable_),
-          oid_(col.oid_),
-          default_(nullptr) {
-      SetDefault(col.default_);
-    }
-
-    /**
-     * Free the memory allocated to default_ in the destructor
-     */
-    ~Column() {
-      if (default_ != nullptr) {
-        delete[] default_;
-        default_ = nullptr;
-      }
     }
 
     /**
@@ -135,18 +115,9 @@ class Schema {
      * @param default_value default_value as a bytes array. Could be nullptr
      */
     void SetDefault(byte *default_value) {
+      default_is_null_ = (default_value == nullptr);
       // If explicitly setting the default value to null
-      if (default_value == nullptr && default_ != nullptr) {
-        // Free the memory allocated to the default value
-        delete default_;
-        default_ = nullptr;
-      } else if (default_value != nullptr) {
-        if (default_ == nullptr) {
-          default_ = new byte[attr_size_];
-        }
-        // Copy the new default value
-        std::memcpy(default_, default_value, attr_size_);
-      }
+      if (!default_is_null_) std::memcpy(default_, default_value, attr_size_);
     }
 
     /**
@@ -190,7 +161,8 @@ class Schema {
     col_oid_t oid_;
     // TODO(Sai): Consider having a DefaultValueObject containing isNull, 16-byte variable and attribute size
     // This avoids handling memory explicitly for default values
-    byte *default_;
+    byte default_[16];
+    bool default_is_null_
   };
 
   /**
