@@ -76,6 +76,16 @@ class Schema {
       TERRIER_ASSERT(type_ != type::TypeId::INVALID, "Attribute type cannot be INVALID.");
     }
 
+    Column(const Column &col)
+        : name_(std::move(col.name_)),
+          type_(col.type_),
+          attr_size_(type::TypeUtil::GetTypeSize(type_)),
+          nullable_(col.nullable_),
+          oid_(col.oid_),
+          default_(nullptr) {
+      SetDefault(col.default_);
+    }
+
     /**
      * Free the memory allocated to default_ in the destructor
      */
@@ -130,7 +140,7 @@ class Schema {
         // Free the memory allocated to the default value
         delete default_;
         default_ = nullptr;
-      } else {
+      } else if (default_value != nullptr) {
         if (default_ == nullptr) {
           default_ = new byte[attr_size_];
         }
