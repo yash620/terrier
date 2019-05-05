@@ -161,7 +161,7 @@ class Schema {
     // TODO(Sai): Consider having a DefaultValueObject containing isNull, 16-byte variable and attribute size
     // This avoids handling memory explicitly for default values
     byte default_[16];
-    bool default_is_null_
+    bool default_is_null_;
   };
 
   /**
