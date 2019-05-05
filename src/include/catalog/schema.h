@@ -107,7 +107,7 @@ class Schema {
     /**
      * @return default value for this column
      */
-    byte *GetDefault() const { return (default_is_null_) ? nullptr : &default_; }
+    byte *GetDefault() const { return (default_is_null_) ? nullptr : reinterpret_cast<byte *>&default_; }
 
     /**
      * Set the default value of the column
