@@ -91,25 +91,6 @@ class ConstraintTests : public ::terrier::TerrierTest {
   const uint16_t max_columns_ = 100;
 };
 
-//    Txn #0 | Txn #1 | Txn #2 |
-//    --------------------------
-//    BEGIN  |        |        |
-//    W(X)   |        |        |
-//    R(X)   |        |        |
-//           | BEGIN  |        |
-//           | R(X)   |        |
-//    COMMIT |        |        |
-//           | R(X)   |        |
-//           | COMMIT |        |
-//           |        | BEGIN  |
-//           |        | R(X)   |
-//           |        | COMMIT |
-//
-// Txn #0 should only read Txn #0's version of X
-// Txn #1 should only read the previous version of X because its start time is before #0's commit
-// Txn #2 should only read Txn #0's version of X
-//
-// This test confirms that we are not susceptible to the DIRTY READS and UNREPEATABLE READS anomalies
 // NOLINTNEXTLINE
 TEST_F(ConstraintTests, ConstraintFailNotEnforcing) {
   transaction::TransactionManager txn_manager(&buffer_pool_, false, LOGGING_DISABLED);
@@ -135,6 +116,7 @@ TEST_F(ConstraintTests, ConstraintFailNotEnforcing) {
   ASSERT_TRUE(!result1 != 0);  // txn_1 should commit
 }
 
+// NOLINTNEXTLINE
 TEST_F(ConstraintTests, ConstraintFailEnforcing) {
   transaction::TransactionManager txn_manager(&buffer_pool_, false, LOGGING_DISABLED);
 
@@ -162,6 +144,7 @@ TEST_F(ConstraintTests, ConstraintFailEnforcing) {
   ASSERT_TRUE(!result0 != 0);  // txn_0 should commit
 }
 
+// NOLINTNEXTLINE
 TEST_F(ConstraintTests, ConstraintPassingNotEnforcing) {
   transaction::TransactionManager txn_manager(&buffer_pool_, false, LOGGING_DISABLED);
 
@@ -187,6 +170,7 @@ TEST_F(ConstraintTests, ConstraintPassingNotEnforcing) {
   ASSERT_TRUE(!result1 != 0);  // txn_1 should commit
 }
 
+// NOLINTNEXTLINE
 TEST_F(ConstraintTests, ConstraintPassingEnforcing) {
   transaction::TransactionManager txn_manager(&buffer_pool_, false, LOGGING_DISABLED);
 
