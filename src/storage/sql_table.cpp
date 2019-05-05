@@ -78,7 +78,7 @@ void SqlTable::UpdateSchema(const catalog::Schema &schema) {
   // Populate the default value map
   for (const auto &column : schema.GetColumns()) {
     auto col_oid = column.GetOid();
-    byte *default_value = column.GetDefault();
+    auto *default_value = column.GetDefault();
     // Only populate the default values of the columns which are new and have a default value
     if (default_value_map_.Find(col_oid) == default_value_map_.End()) {
       uint8_t attr_size = column.GetAttrSize();
