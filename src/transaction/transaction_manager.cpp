@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <queue>
 #include <utility>
+#include <vector>
 
 namespace terrier::transaction {
 TransactionContext *TransactionManager::BeginTransaction() {
@@ -119,7 +120,7 @@ timestamp_t TransactionManager::UpdatingCommitCriticalSection(TransactionContext
   return commit_time;
 }
 
-// TODO (Yashwanth) need to identify some how when commit fails, use most significant bit of commit ts as sentinel value
+// TODO(Yashwanth) need to identify some how when commit fails, use most significant bit of commit ts as sentinel value
 timestamp_t TransactionManager::Commit(TransactionContext *const txn, transaction::callback_fn callback,
                                        void *callback_arg) {
   const timestamp_t result = txn->undo_buffer_.Empty() ? ReadOnlyCommitCriticalSection(txn, callback, callback_arg)
