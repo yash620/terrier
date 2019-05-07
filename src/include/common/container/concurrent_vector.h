@@ -86,8 +86,10 @@ class ConcurrentVector {
   Iterator PushBack(const T &item) { return Iterator(vector_.push_back(item)); }
 
   /**
+   *
    * Adds a new element at the end of the vector, after its current last element.
-   * @param item element to be added.
+   * @tparam Args template for arguments to element's constructor
+   * @param argsm arguments to construct element to be added
    * @return an iterator pointing to the new element.
    */
   template <typename... Args>

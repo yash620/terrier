@@ -2,6 +2,7 @@
 #include <queue>
 #include <unordered_set>
 #include <utility>
+#include <vector>
 #include "common/container/concurrent_vector.h"
 #include "common/shared_latch.h"
 #include "common/spin_latch.h"

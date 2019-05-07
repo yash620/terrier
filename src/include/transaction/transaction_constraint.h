@@ -1,11 +1,11 @@
 #pragma once
-
 #include "transaction/transaction_defs.h"
+
+namespace terrier::transaction {
 /**
  * A constraint that needs to be checked before a transaction can commit
  * Only Updating Txns will install or check constraints
  */
-namespace terrier::transaction {
 class TransactionConstraint {
  public:
   /**
