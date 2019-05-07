@@ -113,7 +113,7 @@ TEST_F(ConstraintTests, ConstraintFailNotEnforcing) {
   auto result0 = txn_manager.Commit(txn0, TestCallbacks::EmptyCallback, nullptr);
 
   ASSERT_EQ(!result0, 0);                 // txn_0 should abort
-  ASSERT_NE(!result1, 0);             // txn_1 should commit
+  ASSERT_NE(!result1, 0);                 // txn_1 should commit
   ASSERT_FALSE(constraint->Enforcing());  // constraint shouldn't be enforcing
 }
 
@@ -140,7 +140,7 @@ TEST_F(ConstraintTests, ConstraintFailEnforcing) {
   auto result1 = txn_manager.Commit(txn1, TestCallbacks::EmptyCallback, nullptr);
 
   ASSERT_TRUE(constraint->Enforcing());
-  ASSERT_EQ(!result1, 0);      // txn_1 should abort
+  ASSERT_EQ(!result1, 0);  // txn_1 should abort
   ASSERT_NE(!result0, 0);  // txn_0 should commit
 }
 

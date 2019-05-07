@@ -377,3 +377,7 @@ set(TERRIER_BENCHMARK_LINK_LIBS
 add_subdirectory(src)
 add_subdirectory(test)
 add_subdirectory(benchmark)
+target_compile_features(terrier
+        PUBLIC
+        cxx_variadic_templates
+        )
