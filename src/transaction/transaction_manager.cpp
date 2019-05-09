@@ -327,6 +327,9 @@ void TransactionManager::InstallConstraint(TransactionContext *txn, constraint_f
     common::SharedLatch::ScopedExclusiveLatch guard(&constraint_latch_);
     constraints_.erase(iter);
   });
+
+  // TODO(Yashwanth) once execution layer is able to handle constraint checking, add in a DeferAction to remove
+  // constraints
 }
 
 }  // namespace terrier::transaction
