@@ -45,7 +45,8 @@ class TransactionManager {
    * @param txn the transaction to commit
    * @param callback function pointer of the callback to invoke when commit is
    * @param callback_arg a void * argument that can be passed to the callback function when invoked
-   * @return commit timestamp of this transaction
+   * @return commit timestamp of this transaction, if commit has failed then the most significant bit of the return
+   *         value is set to 1.
    */
   timestamp_t Commit(TransactionContext *txn, transaction::callback_fn callback, void *callback_arg);
 
@@ -64,6 +65,7 @@ class TransactionManager {
   timestamp_t OldestTransactionStartTime() const;
 
   /**
+   * @return unique timestamp based on current time, and advances one tick
    * @return unique timestamp based on current time, and advances one tick
    */
   timestamp_t GetTimestamp() { return time_++; }
@@ -99,9 +101,8 @@ class TransactionManager {
    * Installs a constraint so that future committing transactions will verify with it
    * @param txn context of transaction installing this constraint
    * @param fn the function ran to verify the constraint
-   * @return pointer to the installed TransactionConstraint
    */
-  TransactionConstraint *InstallConstraint(TransactionContext *txn, constraint_fn fn);
+  void InstallConstraint(TransactionContext *txn, constraint_fn fn);
 
  private:
   storage::RecordBufferSegmentPool *buffer_pool_;
@@ -111,6 +112,8 @@ class TransactionManager {
 
   // TODO(Tianyu): This is the famed HyPer Latch. We will need to re-evaluate performance later.
   common::SharedLatch commit_latch_;
+
+  common::SharedLatch constraint_latch_;
 
   // TODO(Matt): consider a different data structure if this becomes a measured bottleneck
   std::unordered_set<timestamp_t> curr_running_txns_;
@@ -124,9 +127,10 @@ class TransactionManager {
 
   mutable common::SpinLatch deferred_actions_latch_;
 
-  common::ConcurrentVector<TransactionConstraint> constraints_;
+  // using list instead of vector because list doesn't call copy constructor
+  std::list<TransactionConstraint> constraints_;
 
-  bool CheckConstraints(TransactionContext *txn, std::vector<TransactionConstraint *> *txn_installed_constraints);
+  bool CheckConstraints(TransactionContext *txn);
 
   timestamp_t ReadOnlyCommitCriticalSection(TransactionContext *txn, transaction::callback_fn callback,
                                             void *callback_arg);

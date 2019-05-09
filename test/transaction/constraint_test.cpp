@@ -89,6 +89,8 @@ class ConstraintTests : public ::terrier::TerrierTest {
   std::default_random_engine generator_;
   const uint32_t num_iterations_ = 100;
   const uint16_t max_columns_ = 100;
+
+  bool TransactionAborted(uint64_t timestamp) { return (timestamp & (((uint64_t)1) << 63)) > 0; }
 };
 
 // NOLINTNEXTLINE
@@ -107,14 +109,13 @@ TEST_F(ConstraintTests, ConstraintFailNotEnforcing) {
   tested.table_.Insert(txn0, *insert_tuple_0);
   tested.table_.Insert(txn1, *insert_tuple_1);
 
-  auto constraint = txn_manager.InstallConstraint(txn0, [&]() -> bool { return false; });
+  txn_manager.InstallConstraint(txn0, [&]() -> bool { return false; });
 
   auto result1 = txn_manager.Commit(txn1, TestCallbacks::EmptyCallback, nullptr);
   auto result0 = txn_manager.Commit(txn0, TestCallbacks::EmptyCallback, nullptr);
 
-  ASSERT_EQ(!result0, 0);                 // txn_0 should abort
-  ASSERT_NE(!result1, 0);                 // txn_1 should commit
-  ASSERT_FALSE(constraint->Enforcing());  // constraint shouldn't be enforcing
+  ASSERT_TRUE(TransactionAborted(!result0));   // txn_0 should abort
+  ASSERT_FALSE(TransactionAborted(!result1));  // txn_1 should commit
 }
 
 // NOLINTNEXTLINE
@@ -134,14 +135,13 @@ TEST_F(ConstraintTests, ConstraintFailEnforcing) {
   tested.table_.Insert(txn0, *insert_tuple_0);
   tested.table_.Insert(txn1, *insert_tuple_1);
 
-  auto constraint = txn_manager.InstallConstraint(txn0, [&]() -> bool { return false; });
+  txn_manager.InstallConstraint(txn0, [&]() -> bool { return false; });
 
   auto result0 = txn_manager.Commit(txn0, TestCallbacks::EmptyCallback, nullptr);
   auto result1 = txn_manager.Commit(txn1, TestCallbacks::EmptyCallback, nullptr);
 
-  ASSERT_TRUE(constraint->Enforcing());
-  ASSERT_EQ(!result1, 0);  // txn_1 should abort
-  ASSERT_NE(!result0, 0);  // txn_0 should commit
+  ASSERT_TRUE(TransactionAborted(!result1));   // txn_1 should abort
+  ASSERT_FALSE(TransactionAborted(!result0));  // txn_0 should commit
 }
 
 // NOLINTNEXTLINE
@@ -161,14 +161,13 @@ TEST_F(ConstraintTests, ConstraintPassing) {
   tested.table_.Insert(txn0, *insert_tuple_0);
   tested.table_.Insert(txn1, *insert_tuple_1);
 
-  auto constraint = txn_manager.InstallConstraint(txn0, [&]() -> bool { return true; });
+  txn_manager.InstallConstraint(txn0, [&]() -> bool { return true; });
 
   auto result0 = txn_manager.Commit(txn0, TestCallbacks::EmptyCallback, nullptr);
   auto result1 = txn_manager.Commit(txn1, TestCallbacks::EmptyCallback, nullptr);
 
-  ASSERT_TRUE(constraint->Enforcing());
-  ASSERT_NE(!result0, 0);  // txn_0 should commit
-  ASSERT_NE(!result1, 0);  // txn_1 should commit
+  ASSERT_FALSE(TransactionAborted(!result1));  // txn_1 should commit
+  ASSERT_FALSE(TransactionAborted(!result0));  // txn_0 should commit
 }
 
 }  // namespace terrier

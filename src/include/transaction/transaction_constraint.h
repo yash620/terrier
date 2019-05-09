@@ -31,20 +31,15 @@ class TransactionConstraint {
   void SetEnforcing() { enforcing_.store(true); }
 
   /**
-   * Resets the constraint back to not enforcing
-   */
-  void ResetEnforcing() { enforcing_.store(false); }
-
-  /**
    * Checks if the constraint is enforcing or not
    * @return whether the constraint is enforcing or not
    */
-  bool Enforcing() { return enforcing_.load(); }
+  bool IsEnforcing() { return enforcing_.load(); }
 
   /**
    * @return - whether constraint was violated or not
    */
-  bool Violated() { return violated_.load(); }
+  bool IsViolated() { return violated_.load(); }
 
   /**
    * Retrieve the installing transaction id

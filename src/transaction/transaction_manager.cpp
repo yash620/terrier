@@ -56,43 +56,43 @@ timestamp_t TransactionManager::ReadOnlyCommitCriticalSection(TransactionContext
   return commit_time;
 }
 
-bool TransactionManager::CheckConstraints(TransactionContext *txn,
-                                          std::vector<TransactionConstraint *> *txn_installed_constraints) {
-  auto iter = constraints_.Begin();
-  while (iter != constraints_.End()) {
-    TransactionConstraint &constraint = *iter;
-    if (constraint.InstallingTransactionId() == txn->TxnId().load()) {
-      txn_installed_constraints->push_back(&constraint);
-      constraint.SetEnforcing();
-      if (constraint.Violated()) {
+bool TransactionManager::CheckConstraints(TransactionContext *txn) {
+  std::vector<TransactionConstraint *> txn_installed_constraints;
+
+  // Scope for shared latch to check if transaction passes all constraints
+  {
+    common::SharedLatch::ScopedSharedLatch guard(&constraint_latch_);
+    for (TransactionConstraint &constraint : constraints_) {
+      if (constraint.InstallingTransactionId() == txn->TxnId().load()) {
+        txn_installed_constraints.push_back(&constraint);
+        if (constraint.IsViolated()) {
+          return false;
+        }
+      } else if (!constraint.CheckConstraint(txn)) {
         return false;
       }
-    } else if (!constraint.CheckConstraint(txn)) {
-      return false;
     }
-    iter++;
   }
+
+  // Scoped for exlcusive latch to atomically make sure not violated and set enforcing
+  if (!txn_installed_constraints.empty()) {
+    common::SharedLatch::ScopedExclusiveLatch guard_exclusive(&constraint_latch_);
+    for (TransactionConstraint *txn_installed_constraint : txn_installed_constraints) {
+      if (txn_installed_constraint->IsViolated()) {
+        return false;
+      }
+    }
+    for (TransactionConstraint *txn_installed_constraint : txn_installed_constraints) {
+      txn_installed_constraint->SetEnforcing();
+    }
+  }
+
   return true;
 }
 
 timestamp_t TransactionManager::UpdatingCommitCriticalSection(TransactionContext *const txn, const callback_fn callback,
                                                               void *const callback_arg) {
   common::SharedLatch::ScopedExclusiveLatch guard(&commit_latch_);
-  std::vector<TransactionConstraint *> constraints_installed_by_txn;
-
-  if (!CheckConstraints(txn, &constraints_installed_by_txn)) {
-    // TODO(Yashwanth):
-    // Determine how to notify if transaction is aborted, current assumption seems to be if Commit is
-    // called then transaction can't be aborted
-
-    // Since constraint check failed, need to reset all the constraints belonging to this txn
-    for (TransactionConstraint *constraint : constraints_installed_by_txn) {
-      constraint->ResetEnforcing();
-    }
-
-    Abort(txn);
-    return timestamp_t(0);
-  }
 
   const timestamp_t commit_time = time_++;
 
@@ -123,12 +123,18 @@ timestamp_t TransactionManager::UpdatingCommitCriticalSection(TransactionContext
 // TODO(Yashwanth) need to identify some how when commit fails, use most significant bit of commit ts as sentinel value
 timestamp_t TransactionManager::Commit(TransactionContext *const txn, transaction::callback_fn callback,
                                        void *callback_arg) {
-  const timestamp_t result = txn->undo_buffer_.Empty() ? ReadOnlyCommitCriticalSection(txn, callback, callback_arg)
-                                                       : UpdatingCommitCriticalSection(txn, callback, callback_arg);
+  // const timestamp_t result = txn->undo_buffer_.Empty() ? ReadOnlyCommitCriticalSection(txn, callback, callback_arg)
+  //                                                    : UpdatingCommitCriticalSection(txn, callback, callback_arg);
 
-  // If transaction was aborted in critical section then return
-  if (result == timestamp_t(0)) {
-    return result;
+  timestamp_t result;
+  if (txn->undo_buffer_.Empty()) {
+    result = ReadOnlyCommitCriticalSection(txn, callback, callback_arg);
+  } else {
+    if (!CheckConstraints(txn)) {
+      Abort(txn);
+      return txn->TxnId().load();
+    }
+    result = UpdatingCommitCriticalSection(txn, callback, callback_arg);
   }
 
   while (!txn->commit_actions_.empty()) {
@@ -312,9 +318,15 @@ void TransactionManager::DeallocateInsertedTupleIfVarlen(TransactionContext *txn
   }
 }
 
-TransactionConstraint *TransactionManager::InstallConstraint(TransactionContext *txn, constraint_fn fn) {
-  auto iter = constraints_.EmplaceBack(txn->StartTime(), txn->TxnId().load(), fn);
-  return &(*iter);
+void TransactionManager::InstallConstraint(TransactionContext *txn, constraint_fn fn) {
+  common::SharedLatch::ScopedExclusiveLatch guard(&constraint_latch_);
+  constraints_.emplace_back(txn->StartTime(), txn->TxnId().load(), fn);
+  auto iter = --(constraints_.end());
+
+  txn->RegisterAbortAction([iter, this]() {
+    common::SharedLatch::ScopedExclusiveLatch guard(&constraint_latch_);
+    constraints_.erase(iter);
+  });
 }
 
 }  // namespace terrier::transaction
