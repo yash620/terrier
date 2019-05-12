@@ -72,6 +72,9 @@ bool TransactionManager::CheckConstraints(TransactionContext *txn) {
         return false;
       }
     }
+
+    // TODO(Yashwanth): don't set constraint to violated in CheckConstriaint. Store all the constraints you've failed
+    // while still in the shared latch set all those to violated only if you pass
   }
 
   // Scoped for exlcusive latch to atomically make sure not violated and set enforcing
@@ -82,6 +85,7 @@ bool TransactionManager::CheckConstraints(TransactionContext *txn) {
         return false;
       }
     }
+
     for (TransactionConstraint *txn_installed_constraint : txn_installed_constraints) {
       txn_installed_constraint->SetEnforcing();
     }
