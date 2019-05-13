@@ -314,7 +314,6 @@ def main():
             put_file = False
             while not put_file:
                 try:
-                    #print("\n" + name)
                     if file_name_re.search(name):
                         task_queue.put(name, block=True, timeout=300)
                         put_file = True

@@ -2,9 +2,7 @@
 #include <queue>
 #include <unordered_set>
 #include <utility>
-#include <vector>
-#include "common/container/concurrent_vector.h"
-#include "common/shared_latch.h"
+#include "common/gate.h"
 #include "common/spin_latch.h"
 #include "common/strong_typedef.h"
 #include "storage/data_table.h"
@@ -110,8 +108,7 @@ class TransactionManager {
   // TODO(Tianyu): We don't handle timestamp wrap-arounds. I doubt this would be an issue though.
   std::atomic<timestamp_t> time_{timestamp_t(0)};
 
-  // TODO(Tianyu): This is the famed HyPer Latch. We will need to re-evaluate performance later.
-  common::SharedLatch commit_latch_;
+  common::Gate txn_gate_;
 
   common::SharedLatch constraint_latch_;
 

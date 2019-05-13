@@ -51,7 +51,6 @@ class SqlTableTestRW {
     col_oids_.clear();
     for (const auto &c : cols_) {
       col_oids_.emplace_back(c.GetOid());
-      // LOG_INFO("{}", !c.GetOid());
     }
 
     delete pri_;
@@ -275,8 +274,7 @@ class SqlTableTestRW {
    * Read a string from a row
    * @param col_num column number in the schema
    * @param slot - tuple to read from
-   * @return malloc'ed C string (with null terminator). Caller must
-   *   free.
+   * @return malloc'ed C string (with null terminator). Caller must free.
    */
   char *GetVarcharColInRow(transaction::TransactionContext *txn, catalog::col_oid_t(col_oid), storage::TupleSlot slot) {
     auto read_buffer = common::AllocationUtil::AllocateAligned(pri_->ProjectedRowSize());
@@ -383,7 +381,8 @@ TEST_F(SqlTableTests, SelectTest) {
   uint32_t datname = table.GetIntColInRow(txn, catalog::col_oid_t(1), row1_slot);
   EXPECT_EQ(10000, datname);
 
-  // manually set the version of the transaction to be 1
+  // Update the observable schema version.  Outside of testing this would be
+  // an update in the catalog as part of the larger transaction.
   table.version_ = storage::layout_version_t(1);
   int default_val = 42;
   // Add a new column with a default value
@@ -563,7 +562,6 @@ TEST_F(SqlTableTests, UpdateTest) {
   EXPECT_EQ(new_val, 11001);
 
   // update (400, 10003, 42) -> (400, 11003, 420)
-  // LOG_INFO("----------------------------")
   update_oids.clear();
   update_oids.emplace_back(catalog::col_oid_t(1));
   update_oids.emplace_back(catalog::col_oid_t(2));
@@ -581,7 +579,6 @@ TEST_F(SqlTableTests, UpdateTest) {
   EXPECT_EQ(new_val, 420);
 
   // update (100, 10000, null) -> (100, 11000, 420)
-  // LOG_INFO("----------------------------")
   update_oids.clear();
   update_oids.emplace_back(catalog::col_oid_t(1));
   update_oids.emplace_back(catalog::col_oid_t(2));
