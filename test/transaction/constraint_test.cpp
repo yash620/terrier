@@ -90,7 +90,7 @@ class ConstraintTests : public ::terrier::TerrierTest {
   const uint32_t num_iterations_ = 100;
   const uint16_t max_columns_ = 100;
 
-  bool TransactionAborted(uint64_t timestamp) { return (timestamp & ((static_cast<uint64_t>(1))  << 63)) > 0; }
+  bool TransactionAborted(uint64_t timestamp) { return (timestamp & ((static_cast<uint64_t>(1)) << 63)) > 0; }
 };
 
 // NOLINTNEXTLINE
