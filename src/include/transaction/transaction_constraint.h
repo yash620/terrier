@@ -42,10 +42,21 @@ class TransactionConstraint {
   bool IsViolated() { return violated_.load(); }
 
   /**
+   * Sets the violated flag of this constraint to true
+   */
+  void SetViolated() { violated_.store(true); }
+
+  /**
    * Retrieve the installing transaction id
    * @return id of the transaction that installed this constraint
    */
   timestamp_t InstallingTransactionId() { return installing_txn_id_; }
+
+  /**
+   * Verifies if the constraint passes
+   * @return true if constraint check passes, false if it fails
+   */
+  bool VerifyConstraint() { return verify_fn_(); }
 
  private:
   timestamp_t install_time_;            // The original start_time of the transaction installing constraint

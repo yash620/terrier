@@ -58,6 +58,10 @@ void TransactionManager::LogCommit(TransactionContext *const txn, const timestam
   txn->redo_buffer_.Finalize(true);
 }
 
+bool TransactionManager::TransactionAborted(timestamp_t commit_time) {
+  return (!commit_time & ((static_cast<uint64_t>(1)) << 63)) > 0;
+}
+
 timestamp_t TransactionManager::ReadOnlyCommitCriticalSection(TransactionContext *const txn, const callback_fn callback,
                                                               void *const callback_arg) {
   // No records to update. No commit will ever depend on us. We can do all the work outside of the critical section
@@ -70,41 +74,70 @@ timestamp_t TransactionManager::ReadOnlyCommitCriticalSection(TransactionContext
 }
 
 bool TransactionManager::CheckConstraints(TransactionContext *txn) {
-  std::vector<TransactionConstraint *> txn_installed_constraints;
-
-  // Scope for shared latch to check if transaction passes all constraints
+  // First pass: check all constraints, only completes if this txn doesn't own any constraints
   {
-    common::SharedLatch::ScopedSharedLatch guard(&constraint_latch_);
+    common::SharedLatch::ScopedSharedLatch guard_shared(&constraint_latch_);
+    bool owns_constraints = false;
+    std::vector<TransactionConstraint *> txn_violated_constraints;
     for (TransactionConstraint &constraint : constraints_) {
       if (constraint.InstallingTransactionId() == txn->TxnId().load()) {
-        txn_installed_constraints.push_back(&constraint);
+        owns_constraints = true;
+        break;  // Found a constraint this transaction has so go to second pass
+      }
+
+      if (!constraint.IsViolated() &&
+          !constraint.VerifyConstraint()) {  // only need to check if constraint not already violated
+        if (constraint.IsEnforcing()) {
+          return false;  // constraint is enforcing so txn needs to abort
+        }
+
+        txn_violated_constraints.push_back(&constraint);
+      }
+    }
+
+    // doesn't own any constraints and this txn can commmit so set violated constraints to violated
+    if (!owns_constraints) {
+      for (TransactionConstraint *constraint : txn_violated_constraints) {
+        constraint->SetViolated();
+      }
+
+      return true;
+    }
+  }
+
+  // Second Pass
+  {
+    common::SharedLatch::ScopedExclusiveLatch guard_exclusive(&constraint_latch_);
+    std::vector<TransactionConstraint *> txn_violated_constraints;
+    std::vector<TransactionConstraint *> txn_installed_constraints;
+
+    for (TransactionConstraint &constraint : constraints_) {
+      if (constraint.InstallingTransactionId() == txn->TxnId().load()) {
         if (constraint.IsViolated()) {
           return false;
         }
-      } else if (!constraint.CheckConstraint(txn)) {
-        return false;
+        txn_installed_constraints.push_back(&constraint);
+      } else {
+        // only need to check if constraint not already violated
+        if (!constraint.IsViolated() && !constraint.VerifyConstraint()) {
+          if (constraint.IsEnforcing()) {
+            return false;
+          }  // constraint is enforcing so txn needs to abort
+          txn_violated_constraints.push_back(&constraint);
+        }
       }
     }
 
-    // TODO(Yashwanth): don't set constraint to violated in CheckConstriaint. Store all the constraints you've failed
-    // while still in the shared latch set all those to violated only if you pass
-  }
-
-  // Scoped for exlcusive latch to atomically make sure not violated and set enforcing
-  if (!txn_installed_constraints.empty()) {
-    common::SharedLatch::ScopedExclusiveLatch guard_exclusive(&constraint_latch_);
-    for (TransactionConstraint *txn_installed_constraint : txn_installed_constraints) {
-      if (txn_installed_constraint->IsViolated()) {
-        return false;
-      }
+    for (TransactionConstraint *constraint : txn_installed_constraints) {
+      constraint->SetEnforcing();
     }
 
-    for (TransactionConstraint *txn_installed_constraint : txn_installed_constraints) {
-      txn_installed_constraint->SetEnforcing();
+    for (TransactionConstraint *constraint : txn_violated_constraints) {
+      constraint->SetViolated();
     }
-  }
 
-  return true;
+    return true;
+  }
 }
 
 timestamp_t TransactionManager::UpdatingCommitCriticalSection(TransactionContext *const txn, const callback_fn callback,
@@ -123,6 +156,9 @@ timestamp_t TransactionManager::UpdatingCommitCriticalSection(TransactionContext
   //  the correct version the second time, violating snapshot isolation.
   //  Make sure you solve this problem before you remove this gate for whatever reason.
   common::Gate::ScopedLock gate(&txn_gate_);
+  if (!(CheckConstraints(txn))) {
+    return txn->TxnId().load();
+  }
   const timestamp_t commit_time = time_++;
 
   LogCommit(txn, commit_time, callback, callback_arg);
@@ -135,18 +171,11 @@ timestamp_t TransactionManager::UpdatingCommitCriticalSection(TransactionContext
 // TODO(Yashwanth) need to identify some how when commit fails, use most significant bit of commit ts as sentinel value
 timestamp_t TransactionManager::Commit(TransactionContext *const txn, transaction::callback_fn callback,
                                        void *callback_arg) {
-  // const timestamp_t result = txn->undo_buffer_.Empty() ? ReadOnlyCommitCriticalSection(txn, callback, callback_arg)
-  //                                                    : UpdatingCommitCriticalSection(txn, callback, callback_arg);
-
-  timestamp_t result;
-  if (txn->undo_buffer_.Empty()) {
-    result = ReadOnlyCommitCriticalSection(txn, callback, callback_arg);
-  } else {
-    if (!CheckConstraints(txn)) {
-      Abort(txn);
-      return txn->TxnId().load();
-    }
-    result = UpdatingCommitCriticalSection(txn, callback, callback_arg);
+  const timestamp_t result = txn->undo_buffer_.Empty() ? ReadOnlyCommitCriticalSection(txn, callback, callback_arg)
+                                                       : UpdatingCommitCriticalSection(txn, callback, callback_arg);
+  if (TransactionAborted(result)) {
+    Abort(txn);
+    return result;
   }
 
   while (!txn->commit_actions_.empty()) {
@@ -341,7 +370,7 @@ void TransactionManager::InstallConstraint(TransactionContext *txn, constraint_f
   });
 
   // TODO(Yashwanth) once execution layer is able to handle constraint checking, add in a DeferAction to remove
-  // constraints
+  //  constraints
 }
 
 }  // namespace terrier::transaction

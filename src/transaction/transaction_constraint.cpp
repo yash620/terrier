@@ -17,12 +17,7 @@ bool TransactionConstraint::CheckConstraint(TransactionContext *txn) {
     return true;
   }
 
-  if (enforcing_.load()) {  // if constraint enforcing and fail check then can't commit
-    return false;
-  }
-
-  violated_.store(true);  // if not enforcing and failed check, can commit but notify constraint to be violated
-  return true;
+  return enforcing_.load();
 }
 
 }  // namespace terrier::transaction

@@ -1,8 +1,10 @@
 #pragma once
+#include <list>
 #include <queue>
 #include <unordered_set>
 #include <utility>
 #include "common/gate.h"
+#include "common/shared_latch.h"
 #include "common/spin_latch.h"
 #include "common/strong_typedef.h"
 #include "storage/data_table.h"
@@ -147,5 +149,7 @@ class TransactionManager {
   void DeallocateInsertedTupleIfVarlen(TransactionContext *txn, storage::UndoRecord *undo,
                                        const storage::TupleAccessStrategy &accessor) const;
   void GCLastUpdateOnAbort(TransactionContext *txn);
+
+  bool TransactionAborted(timestamp_t commit_time);
 };
 }  // namespace terrier::transaction
