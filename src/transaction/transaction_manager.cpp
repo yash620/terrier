@@ -59,7 +59,7 @@ void TransactionManager::LogCommit(TransactionContext *const txn, const timestam
 }
 
 bool TransactionManager::TransactionAborted(timestamp_t commit_time) {
-  return (!commit_time & ((static_cast<uint64_t>(1)) << 63)) > 0;
+  return ((!commit_time) & ((static_cast<uint64_t>(1)) << 63)) > 0;
 }
 
 timestamp_t TransactionManager::ReadOnlyCommitCriticalSection(TransactionContext *const txn, const callback_fn callback,
