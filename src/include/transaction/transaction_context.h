@@ -8,6 +8,7 @@
 #include "storage/tuple_access_strategy.h"
 #include "storage/undo_record.h"
 #include "storage/write_ahead_log/log_record.h"
+#include "transaction/transaction_constraint.h"
 #include "transaction/transaction_util.h"
 
 namespace terrier::storage {

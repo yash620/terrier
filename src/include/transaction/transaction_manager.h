@@ -1,14 +1,17 @@
 #pragma once
+#include <list>
 #include <queue>
 #include <unordered_set>
 #include <utility>
 #include "common/gate.h"
+#include "common/shared_latch.h"
 #include "common/spin_latch.h"
 #include "common/strong_typedef.h"
 #include "storage/data_table.h"
 #include "storage/record_buffer.h"
 #include "storage/undo_record.h"
 #include "storage/write_ahead_log/log_manager.h"
+#include "transaction/transaction_constraint.h"
 #include "transaction/transaction_context.h"
 #include "transaction/transaction_defs.h"
 
@@ -42,7 +45,8 @@ class TransactionManager {
    * @param txn the transaction to commit
    * @param callback function pointer of the callback to invoke when commit is
    * @param callback_arg a void * argument that can be passed to the callback function when invoked
-   * @return commit timestamp of this transaction
+   * @return commit timestamp of this transaction, if commit has failed then the most significant bit of the return
+   *         value is set to 1.
    */
   timestamp_t Commit(TransactionContext *txn, transaction::callback_fn callback, void *callback_arg);
 
@@ -61,6 +65,7 @@ class TransactionManager {
   timestamp_t OldestTransactionStartTime() const;
 
   /**
+   * @return unique timestamp based on current time, and advances one tick
    * @return unique timestamp based on current time, and advances one tick
    */
   timestamp_t GetTimestamp() { return time_++; }
@@ -92,6 +97,13 @@ class TransactionManager {
    */
   std::queue<std::pair<timestamp_t, Action>> DeferredActionsForGC();
 
+  /**
+   * Installs a constraint so that future committing transactions will verify with it
+   * @param txn context of transaction installing this constraint
+   * @param fn the function ran to verify the constraint
+   */
+  void InstallConstraint(TransactionContext *txn, constraint_fn fn);
+
  private:
   storage::RecordBufferSegmentPool *buffer_pool_;
   // TODO(Tianyu): Timestamp generation needs to be more efficient (batches)
@@ -99,6 +111,8 @@ class TransactionManager {
   std::atomic<timestamp_t> time_{timestamp_t(0)};
 
   common::Gate txn_gate_;
+
+  common::SharedLatch constraint_latch_;
 
   // TODO(Matt): consider a different data structure if this becomes a measured bottleneck
   std::unordered_set<timestamp_t> curr_running_txns_;
@@ -109,7 +123,13 @@ class TransactionManager {
   storage::LogManager *const log_manager_;
 
   std::queue<std::pair<timestamp_t, Action>> deferred_actions_;
+
   mutable common::SpinLatch deferred_actions_latch_;
+
+  // using list instead of vector because list doesn't call copy constructor
+  std::list<TransactionConstraint> constraints_;
+
+  bool CheckConstraints(TransactionContext *txn);
 
   timestamp_t ReadOnlyCommitCriticalSection(TransactionContext *txn, transaction::callback_fn callback,
                                             void *callback_arg);
@@ -129,5 +149,7 @@ class TransactionManager {
   void DeallocateInsertedTupleIfVarlen(TransactionContext *txn, storage::UndoRecord *undo,
                                        const storage::TupleAccessStrategy &accessor) const;
   void GCLastUpdateOnAbort(TransactionContext *txn);
+
+  bool TransactionAborted(timestamp_t commit_time);
 };
 }  // namespace terrier::transaction
