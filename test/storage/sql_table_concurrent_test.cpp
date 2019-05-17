@@ -14,7 +14,7 @@
 #include "util/transaction_test_util.h"
 namespace terrier {
 struct SqlTableConcurrentTests : public TerrierTest {
-  SqlTableConcurrentTests() : gc_(&txn_manager_) {}
+  SqlTableConcurrentTests() : gc_(&txn_manager_) { versioned_col_oids.reserve(10); }
 
   void SetUp() override { TerrierTest::SetUp(); }
 
