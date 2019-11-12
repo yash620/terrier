@@ -68,7 +68,7 @@ void RandomDataTableTransaction::Finish() {
 }
 
 // TODO(Tianyu): Convert to DI
-LargeDataTableBenchmarkObject::LargeDataTableBenchmarkObject(const std::vector<uint8_t> &attr_sizes,
+LargeDataTableBenchmarkObject::LargeDataTableBenchmarkObject(const std::vector<uint16_t> &attr_sizes,
                                                              uint32_t initial_table_size, uint32_t txn_length,
                                                              std::vector<double> operation_ratio,
                                                              storage::BlockStore *block_store,

@@ -98,7 +98,7 @@ uint32_t StorageUtil::PadUpToSize(const uint8_t word_size, const uint32_t offset
   return (offset + mask) & (~mask);
 }
 
-std::vector<uint16_t> StorageUtil::ComputeBaseAttributeOffsets(const std::vector<uint8_t> &attr_sizes,
+std::vector<uint16_t> StorageUtil::ComputeBaseAttributeOffsets(const std::vector<uint16_t> &attr_sizes,
                                                                uint16_t num_reserved_columns) {
   // First compute {count_varlen, count_8, count_4, count_2, count_1}
   // Then {offset_varlen, offset_8, offset_4, offset_2, offset_1} is the inclusive scan of the counts

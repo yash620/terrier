@@ -9,11 +9,11 @@ namespace terrier::storage {
 
 SqlTable::SqlTable(BlockStore *const store, const catalog::Schema &schema) : block_store_(store) {
   // Begin with the NUM_RESERVED_COLUMNS in the attr_sizes
-  std::vector<uint8_t> attr_sizes;
+  std::vector<uint16_t> attr_sizes;
   attr_sizes.reserve(NUM_RESERVED_COLUMNS + schema.GetColumns().size());
 
   for (uint8_t i = 0; i < NUM_RESERVED_COLUMNS; i++) {
-    attr_sizes.emplace_back(8);
+    attr_sizes.emplace_back(sizeof(uint *));
   }
 
   TERRIER_ASSERT(attr_sizes.size() == NUM_RESERVED_COLUMNS,
