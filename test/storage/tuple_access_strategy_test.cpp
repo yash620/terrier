@@ -151,7 +151,7 @@ TEST_F(TupleAccessStrategyTests, MemorySafety) {
       // Make sure we test the largest layout so that there is still at least one slot in a block.
       std::vector<uint16_t> sizes;
       for (uint32_t j = 0; j < common::Constants::MAX_COL; j++)
-        sizes.push_back(static_cast<uint16_t>(j == 0 ? 16 : VARLEN_COLUMN));
+        sizes.push_back(static_cast<uint16_t>(j == 0 ? 8 : VARLEN_COLUMN));
       layout = storage::BlockLayout{sizes};
     } else {
       layout = StorageTestUtil::RandomLayoutWithVarlens(common::Constants::MAX_COL, &generator);
