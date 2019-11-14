@@ -118,10 +118,10 @@ class IndexMetadata {
   FRIEND_TEST(IndexKeyTests, IndexMetadataGenericKeyMustInlineVarlenTest);
 
   catalog::IndexSchema key_schema_;                                             // for GenericKey
-  std::vector<uint16_t> attr_sizes_;                                             // for CompactIntsKey
+  std::vector<uint16_t> attr_sizes_;                                            // for CompactIntsKey
   std::vector<uint16_t> inlined_attr_sizes_;                                    // for GenericKey
   bool must_inline_varlen_;                                                     // for GenericKey
-  std::vector<uint16_t> compact_ints_offsets_;                                   // for CompactIntsKey
+  std::vector<uint16_t> compact_ints_offsets_;                                  // for CompactIntsKey
   std::unordered_map<catalog::indexkeycol_oid_t, uint16_t> key_oid_to_offset_;  // for execution layer
   ProjectedRowInitializer initializer_;                                         // user-facing initializer
   ProjectedRowInitializer inlined_initializer_;                                 // for GenericKey, internal only
